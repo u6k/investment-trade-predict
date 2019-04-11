@@ -13,7 +13,7 @@ autopep8 = "*"
 python_version = "3.7"
 
 [scripts]
-start = "python investment-machine_predict-prices/app.py"
+start = "python investment_machine_predict_prices/app.py"
 lint = "flake8 ."
 fix = "autopep8 -ivr ."
 
