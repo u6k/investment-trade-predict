@@ -5,6 +5,7 @@ verify_ssl = true
 
 [dev-packages]
 flake8 = "*"
+autopep8 = "*"
 
 [packages]
 
@@ -12,5 +13,7 @@ flake8 = "*"
 python_version = "3.7"
 
 [scripts]
-start = "python investment-machine_predict-prices.py"
+start = "python investment-machine_predict-prices/app.py"
+lint = "flake8 ."
+fix = "autopep8 -ivr ."
 
