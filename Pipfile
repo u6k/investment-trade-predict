@@ -1,9 +1,10 @@
 [[source]]
-name = "investment-machine_predict-prices"
-url = "https://github.com/u6k/investment-machine_predict-prices"
+name = "pypi"
+url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+flake8 = "*"
 
 [packages]
 
