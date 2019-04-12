@@ -1,0 +1,14 @@
+language: python
+
+addons:
+  apt:
+    packages:
+      - docker-ce
+
+script:
+  - docker-compose build
+  - docker-compose run app
+
+notifications:
+  slack:
+    secure: oT8w+cYK2YxIMrNqOq9/0sCQWOdNY8hNl+XkQYiCPnuBAh6F4QHaGbeZQ6S07oQbsxKFDGgB38JuXiDIOlsJ8N9rHO0ROsLzPUcws4DQst3qaZ9t501LHwB7ShH4uMalkrg+ZReU1On1JGwDKl4u+KUe8fCKF6f8CYUeeaaUV4SSIuCpl8LKQ0sDdUK7aCuDWUa/s7r4IY9zkOCemsvqyQzUl+maj/yZCJx1xUzeYUmhB1AtfRACqdWsCMdOwZu0gLgbz+fPwOXeGxS01FX4qdfmJzwEnTDwi06aMzeFxIpuxhb9nYNOz8Zh7SkI2qmen7SQtWRCknvcefj7D+bcsQ9kOoXXLzYQBBuoW0cxBpmW4cKkYO/PxeVf67LmKv+7N2npTJyRqaKmkuoNt28aCQDXxlbKOdxbAWPIXh6fuKLc16vYYBLNDzJuaftH5ajf7Rtj6xPTAmbipIjVQdAKSA4e6CexU9YU52MthxeywvPeP3gLO/JIP9eC4EtBakAzXqzkB0gjog2YbvOBCtscoIdMytTFe2XzMo+TSjEBQz4O15QCXrgohYYnUoFpByBEPzBS4KEdhjLvSK9OZn6d8CEXYyufkP+8fuaUQ6CCIj7umWyne1CE+D1KlssHYZBJ9aAYNsMpqUqfHSuaYcJCN7eWy195qiOdFZd9lcEAR4I=
