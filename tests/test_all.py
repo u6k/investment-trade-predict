@@ -1,6 +1,6 @@
-import unittest
+from .context import investment_machine_predict_prices
 
-import investment_machine_predict_prices
+import unittest
 
 
 class TestApp(unittest.TestCase):
