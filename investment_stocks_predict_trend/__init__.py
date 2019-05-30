@@ -3,7 +3,7 @@ import numpy as np
 from sklearn import ensemble, metrics, model_selection
 
 
-VERSION = '0.2.0-develop'
+VERSION = '0.2.0'
 
 
 
