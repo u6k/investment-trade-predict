@@ -4,7 +4,8 @@ import investment_stocks_predict_trend as app
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("subcommand", help="processing_by_company, top_companies, build_model")
+    parser.add_argument(
+        "subcommand", help="processing_by_company, top_companies, build_model")
 
     args = parser.parse_args()
 
@@ -16,4 +17,3 @@ if __name__ == "__main__":
         app.build_model()
     else:
         raise Exception("unknown subcommand: " + args.subcommand)
-
