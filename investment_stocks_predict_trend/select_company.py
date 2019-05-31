@@ -11,7 +11,8 @@ def preprocessing():
     df_profit = df_companies_csv.copy()
     df_profit = df_profit[["ticker_symbol", "name"]]
     df_profit = df_profit.dropna()
-    df_profit = df_profit.assign(ticker_symbol=df_profit["ticker_symbol"].astype(int))
+    df_profit = df_profit.assign(
+        ticker_symbol=df_profit["ticker_symbol"].astype(int))
     df_profit = df_profit.sort_values("ticker_symbol")
     df_profit = df_profit.drop_duplicates()
     df_profit = df_profit.set_index("ticker_symbol")
@@ -24,7 +25,8 @@ def preprocessing():
     print(df_profit.tail())
 
     for symbol in df_profit.index:
-        df_prices_csv = pd.read_csv("local/stock_prices." + str(symbol) + ".csv")
+        df_prices_csv = pd.read_csv(
+            "local/stock_prices." + str(symbol) + ".csv")
 
         df = df_prices_csv.copy()
         df = df[["date", "opening_price", "close_price", "turnover"]]
@@ -35,7 +37,8 @@ def preprocessing():
 
         for idx in df.index:
             if df.at[idx, "opening_price"] < df.at[idx, "close_price"]:
-                df.at[idx, "profit"] = df.at[idx, "close_price"] - df.at[idx, "opening_price"]
+                df.at[idx, "profit"] = df.at[idx, "close_price"] - \
+                    df.at[idx, "opening_price"]
             else:
                 df.at[idx, "profit"] = 0.0
 

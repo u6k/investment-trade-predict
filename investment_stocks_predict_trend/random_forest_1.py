@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from sklearn import ensemble, metrics, model_selection
-import sklearn.preprocessing as sp
 
 
 def score(ticker_symbol):
@@ -38,7 +37,7 @@ def score(ticker_symbol):
         y.append(int(df[-i-1:-i]["updown"].values))
 
     x_train, x_test, y_train, y_test = \
-            model_selection.train_test_split(x, y)
+        model_selection.train_test_split(x, y)
 
     # build model
     params = {
@@ -71,6 +70,7 @@ def score(ticker_symbol):
     print(ac_score)
 
     return ac_score
+
 
 def scores():
     df_score = pd.read_csv("local/top_companies.csv", index_col=0)

@@ -4,7 +4,6 @@ from sklearn import ensemble, metrics, model_selection
 import sklearn.preprocessing as sp
 
 
-
 def score(ticker_symbol):
     df_csv = pd.read_csv("local/stock_prices." + str(ticker_symbol) + ".csv")
 
@@ -104,6 +103,7 @@ def score(ticker_symbol):
     print(ac_score)
 
     return ac_score
+
 
 def scores():
     df_top_companies = pd.read_csv("local/top_companies.csv", index_col=0)
