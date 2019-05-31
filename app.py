@@ -1,21 +1,22 @@
 import argparse
 
-import investment_stocks_predict_trend as app
+from investment_stocks_predict_trend import select_company
+from investment_stocks_predict_trend import random_forest_1
+from investment_stocks_predict_trend import random_forest_2
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "subcommand", help="processing_by_company, top_companies, build_model, build_model_2")
+    parser.add_argument("subcommand")
 
     args = parser.parse_args()
 
-    if args.subcommand == "processing_by_company":
-        app.processing_by_company()
-    elif args.subcommand == "top_companies":
-        app.top_companies()
-    elif args.subcommand == "build_model":
-        app.build_model()
-    elif args.subcommand == "build_models_2":
-        app.build_models_2()
+    if args.subcommand == "select_company.preprocessing":
+        select_company.preprocessing()
+    elif args.subcommand == "select_company.top":
+        select_company.top()
+    elif args.subcommand == "random_forest_1.scores":
+        random_forest_1.scores()
+    elif args.subcommand == "random_forest_2.scores":
+        random_forest_2.scores()
     else:
         raise Exception("unknown subcommand: " + args.subcommand)
