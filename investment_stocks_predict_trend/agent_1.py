@@ -1,20 +1,18 @@
 import pandas as pd
 import numpy as np
-from comet_ml import Experiment
 import chainer
 import chainerrl
 import matplotlib.pyplot as plt
 
 
-def build_experiment(project_name="learn-stocks.2"):
-    experiment = Experiment(api_key=COMET_ML_API_KEY,
-                            project_name=project_name)
-
-    return experiment
-
-
-def end_experiment(experiment):
-    experiment.end()
+def execute(experiment):
+    df = preprocessing()
+    env = build_env(df)
+    agent = build_agent(env, experiment)
+    learn_agent(env, agent, experiment)
+    df_result = simulate_agent(env, agent, experiment)
+    build_figure_win_vs_lose(df_result, experiment)
+    build_figure_reward(df_result, experiment)
 
 
 def preprocessing():
@@ -24,7 +22,11 @@ def preprocessing():
     print(df_csv.tail())
 
     df = df_csv.copy()
-    df = df[["date", "opening_price", "high_price", "low_price", "close_price"]]
+    df = df[["date",
+             "opening_price",
+             "high_price",
+             "low_price",
+             "close_price"]]
     df = df.sort_values("date")
     df = df.drop_duplicates()
     df = df.assign(id=np.arange(len(df)))
@@ -123,13 +125,13 @@ class LearnEnv():
         return np.random.randint(0, 2)
 
 
-def build_env():
+def build_env(df):
     env = LearnEnv(df, 19090-250, 19090)
 
     return env
 
 
-def build_agent(env, experiment):
+def build_agent(env, experiment=None):
     hyper_params = {
         "n_hidden_layers": 3,
         "obs_size": env.observation_size,
@@ -145,13 +147,15 @@ def build_agent(env, experiment):
         "ddqn_update_interval": 1,
         "ddqn_target_update_interval": 100
     }
+    if experiment is not None:
+        experiment.log_parameters(hyper_params)
 
     q_func = chainerrl.q_functions.FCStateQFunctionWithDiscreteAction(
         hyper_params["obs_size"],
         hyper_params["n_actions"],
         n_hidden_layers=hyper_params["n_hidden_layers"],
         n_hidden_channels=hyper_params["n_hidden_channels"])
-    q_func.to_gpu(0)
+    # q_func.to_gpu(0)
 
     optimizer = chainer.optimizers.Adam(eps=hyper_params["adam_eps"])
     optimizer.setup(q_func)
@@ -179,7 +183,7 @@ def build_agent(env, experiment):
     return agent
 
 
-def learn_agent(env, agent, experiment):
+def learn_agent(env, agent, experiment=None):
     n_episodes = 500
 
     for i in range(1, n_episodes + 1):
@@ -202,7 +206,8 @@ def learn_agent(env, agent, experiment):
             "lose": env.lose,
             "funds": env.funds + env.buy_price
         }
-        experiment.log_metrics(metrics, step=i)
+        if experiment is not None:
+            experiment.log_metrics(metrics, step=i)
 
         if i % 10 == 0:
             print("episode:", i, ", R:", R, ", statistics:",
@@ -210,9 +215,8 @@ def learn_agent(env, agent, experiment):
             env.render()
 
 
-def simulate_agent(env, agent, experiment):
+def simulate_agent(env, agent, experiment=None):
     obs = env.reset()
-    R = 0
     done = False
 
     while not done:
@@ -225,12 +229,13 @@ def simulate_agent(env, agent, experiment):
 
     df_result = env.df_action.query("18840 <= id <= 19090").copy()
 
-    experiment.log_asset_data(df_result.to_csv(), file_name="result.csv")
+    if experiment is not None:
+        experiment.log_asset_data(df_result.to_csv(), file_name="result.csv")
 
-    df_result
+    return df_result
 
 
-def build_figure_win_vs_lose(df_result, experiment):
+def build_figure_win_vs_lose(df_result, experiment=None):
     fig = plt.figure(figsize=(20, 5))
     subplot = fig.add_subplot(111)
     subplot.plot(df_result["win"], label="win")
@@ -239,10 +244,11 @@ def build_figure_win_vs_lose(df_result, experiment):
 
     plt.show()
 
-    experiment.log_figure(figure_name="win_vs_lose", figure=fig)
+    if experiment is not None:
+        experiment.log_figure(figure_name="win_vs_lose", figure=fig)
 
 
-def build_figure_reward(df_result, experiment):
+def build_figure_reward(df_result, experiment=None):
     fig = plt.figure(figsize=(20, 5))
     subplot = fig.add_subplot(222)
     subplot.plot(df_result["reward"], label="reward")
@@ -250,4 +256,5 @@ def build_figure_reward(df_result, experiment):
 
     plt.show()
 
-    experiment.log_figure(figure_name="reward", figure=fig)
+    if experiment is not None:
+        experiment.log_figure(figure_name="reward", figure=fig)
