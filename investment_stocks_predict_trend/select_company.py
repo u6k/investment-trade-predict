@@ -26,7 +26,7 @@ def preprocessing():
 
     for symbol in df_profit.index:
         df_prices_csv = pd.read_csv(
-            "local/stock_prices." + str(symbol) + ".csv")
+            "local/stock_prices/stock_prices." + str(symbol) + ".csv")
 
         df = df_prices_csv.copy()
         df = df[["date", "opening_price", "close_price", "turnover"]]
