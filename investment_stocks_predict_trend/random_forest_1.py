@@ -4,7 +4,8 @@ from sklearn import ensemble, metrics, model_selection
 
 
 def score(ticker_symbol):
-    df_csv = pd.read_csv("local/stock_prices/stock_prices." + str(ticker_symbol) + ".csv")
+    df_csv = pd.read_csv(
+        "local/stock_prices/stock_prices." + str(ticker_symbol) + ".csv")
 
     df = df_csv.copy()
     df = df[["date", "opening_price", "close_price"]]
