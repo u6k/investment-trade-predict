@@ -10,7 +10,7 @@ def execute(experiment):
 
 
 def preprocessing():
-    df_csv = pd.read_csv("drive/My Drive/projects/ml_data/stocks/nikkei_averages.csv", index_col=0)
+    df_csv = pd.read_csv("local/nikkei_averages.csv", index_col=0)
     df_csv
 
     df = df_csv.copy()
