@@ -4,7 +4,7 @@ from sklearn import ensemble, metrics, model_selection
 
 
 def score(ticker_symbol):
-    df_csv = pd.read_csv("local/stock_prices." + str(ticker_symbol) + ".csv")
+    df_csv = pd.read_csv("local/stock_prices/stock_prices." + str(ticker_symbol) + ".csv")
 
     df = df_csv.copy()
     df = df[["date", "opening_price", "close_price"]]
@@ -36,8 +36,7 @@ def score(ticker_symbol):
         x.append(df[-i-31:-i-1]["return_index"].values)
         y.append(int(df[-i-1:-i]["updown"].values))
 
-    x_train, x_test, y_train, y_test = \
-        model_selection.train_test_split(x, y)
+    x_train, x_test, y_train, y_test = model_selection.train_test_split(x, y)
 
     # build model
     params = {
