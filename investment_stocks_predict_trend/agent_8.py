@@ -22,7 +22,7 @@ def execute(experiment):
 
 
 def preprocessing():
-    df_csv = pd.read_csv("local/stock_prices/stock_prices.20190523.csv")
+    df_csv = pd.read_csv("local/stock_prices/stock_prices.7974.csv")
 
     df = df_csv.copy()
 
