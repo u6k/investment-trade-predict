@@ -12,6 +12,11 @@ nose = "*"
 sklearn = "*"
 pandas = "*"
 numpy = "*"
+chainerrl = "*"
+comet_ml = "*"
+matplotlib = "*"
+keras = "*"
+tensorflow = "*"
 
 [requires]
 python_version = "3.7"
