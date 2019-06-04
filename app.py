@@ -10,6 +10,7 @@ from investment_stocks_predict_trend import agent_3
 from investment_stocks_predict_trend import agent_4
 from investment_stocks_predict_trend import agent_5
 from investment_stocks_predict_trend import agent_6
+from investment_stocks_predict_trend import agent_7
 
 
 if __name__ == "__main__":
@@ -49,6 +50,10 @@ if __name__ == "__main__":
     elif args.subcommand == "agent_6":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_6")
         agent_6.execute(experiment)
+        experiment.end()
+    elif args.subcommand == "agent_7":
+        experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_7")
+        agent_7.execute(experiment)
         experiment.end()
     else:
         raise Exception("unknown subcommand: " + args.subcommand)
