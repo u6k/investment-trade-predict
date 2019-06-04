@@ -23,13 +23,11 @@ if __name__ == "__main__":
     elif args.subcommand == "random_forest_2.scores":
         random_forest_2.scores()
     elif args.subcommand == "agent_1":
-        experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"],
-                                project_name="agent_1")
+        experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_1")
         agent_1.execute(experiment)
         experiment.end()
     elif args.subcommand == "agent_2":
-        experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"],
-                                project_name="agent_2")
+        experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_2")
         agent_2.execute(experiment)
         experiment.end()
     else:

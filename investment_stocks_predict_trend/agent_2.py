@@ -22,11 +22,7 @@ def preprocessing():
     print(df_csv.tail())
 
     df = df_csv.copy()
-    df = df[["date",
-             "opening_price",
-             "high_price",
-             "low_price",
-             "close_price"]]
+    df = df[["date", "opening_price", "high_price", "low_price", "close_price"]]
     df = df.sort_values("date")
     df = df.drop_duplicates()
     df = df.assign(id=np.arange(len(df)))
@@ -76,8 +72,7 @@ class LearnEnv():
             reward = 0.0
         elif self.buy_price == 0.0:
             # buy
-            self.buy_price = self.df_action.at[self.current_id,
-                                               "opening_price"]
+            self.buy_price = self.df_action.at[self.current_id, "opening_price"]
             self.funds -= self.buy_price
             reward = 0.0
 
@@ -113,8 +108,7 @@ class LearnEnv():
 
     def observe(self):
         obs = np.array(
-            [self.df_action.at[self.current_id - i, "rolling_5_mean"]
-                for i in range(1, 11)],
+            [self.df_action.at[self.current_id - i, "rolling_5_mean"] for i in range(1, 11)],
             dtype=np.float32
         )
 
@@ -153,7 +147,8 @@ def build_agent(env, experiment=None):
         hyper_params["obs_size"],
         hyper_params["n_actions"],
         n_hidden_layers=hyper_params["n_hidden_layers"],
-        n_hidden_channels=hyper_params["n_hidden_channels"])
+        n_hidden_channels=hyper_params["n_hidden_channels"]
+    )
     # q_func.to_gpu(0)
 
     optimizer = chainer.optimizers.Adam(eps=hyper_params["adam_eps"])
@@ -166,8 +161,7 @@ def build_agent(env, experiment=None):
         random_action_func=env.random_action
     )
 
-    replay_buffer = chainerrl.replay_buffer.ReplayBuffer(
-        capacity=hyper_params["replay_buffer_capacity"])
+    replay_buffer = chainerrl.replay_buffer.ReplayBuffer(capacity=hyper_params["replay_buffer_capacity"])
 
     agent = chainerrl.agents.DoubleDQN(
         q_func,
@@ -177,7 +171,8 @@ def build_agent(env, experiment=None):
         explorer,
         replay_start_size=hyper_params["ddqn_replay_start_size"],
         update_interval=hyper_params["ddqn_update_interval"],
-        target_update_interval=hyper_params["ddqn_target_update_interval"])
+        target_update_interval=hyper_params["ddqn_target_update_interval"]
+    )
 
     return agent
 
@@ -209,8 +204,7 @@ def learn_agent(env, agent, experiment=None):
             experiment.log_metrics(metrics, step=i)
 
         if i % 10 == 0:
-            print("episode:", i, ", R:", R, ", statistics:",
-                  agent.get_statistics(), ", epsilon:", agent.explorer.epsilon)
+            print("episode:", i, ", R:", R, ", statistics:", agent.get_statistics(), ", epsilon:", agent.explorer.epsilon)
             env.render()
 
 
