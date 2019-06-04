@@ -17,7 +17,7 @@ def execute(experiment):
 
 
 def preprocessing():
-    df_csv = pd.read_csv("local/stocks/stock_prices.7974.csv")
+    df_csv = pd.read_csv("local/stock_prices/stock_prices.7974.csv")
 
     print(df_csv)
 
