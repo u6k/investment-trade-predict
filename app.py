@@ -13,6 +13,8 @@ from investment_stocks_predict_trend import agent_6
 from investment_stocks_predict_trend import agent_7
 from investment_stocks_predict_trend import agent_8
 from investment_stocks_predict_trend import agent_9
+from investment_stocks_predict_trend import agent_10
+from investment_stocks_predict_trend import agent_11
 from investment_stocks_predict_trend import predict_1
 from investment_stocks_predict_trend import predict_2
 
@@ -66,6 +68,14 @@ if __name__ == "__main__":
     elif args.subcommand == "agent_9":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_9")
         agent_9.execute(experiment)
+        experiment.end()
+    elif args.subcommand == "agent_10":
+        experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_10")
+        agent_10.execute(experiment, max_episode=30)
+        experiment.end()
+    elif args.subcommand == "agent_11":
+        experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_11")
+        agent_11.execute(experiment)
         experiment.end()
     elif args.subcommand == "predict_1":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="predict_1")
