@@ -5,19 +5,31 @@ import chainerrl
 import matplotlib.pyplot as plt
 
 
-def execute(experiment):
+def execute(experiment=None, max_episode=500):
     df = preprocessing()
     print(df)
 
-    env = LearnEnv(df, 18000, 18750)
-    agent = build_agent(env, experiment)
-    learn_agent(env, agent, experiment)
+    train_env = LearnEnv(df, 18000, 18750)
+    test_env = LearnEnv(df, 18750, 19000)
 
-    env = LearnEnv(df, 18750, 19000)
-    df_result = simulate_agent(env, agent, experiment)
+    agent = build_agent(train_env, experiment)
 
-    build_figure_win_vs_lose(df_result, experiment)
-    build_figure_reward(df_result, experiment)
+    for i in range(1, max_episode+1):
+        print("*** episode: "+str(i)+" ***")
+        df_result, metrics = train_agent(train_env, agent)
+        if experiment is not None:
+            experiment.log_asset_data(df_result.to_csv(), file_name="train_result."+str(i)+".csv")
+            experiment.log_metrics(metrics, step=i)
+
+        if i % 10 == 0:
+            print("episode: "+str(i))
+            print(metrics)
+
+            df_result, metrics = simulate_agent(test_env, agent)
+            if experiment is not None:
+                experiment.log_asset_data(df_result.to_csv(), file_name="test_result."+str(i)+".csv")
+
+            build_figure_result(df_result, experiment)
 
 
 def preprocessing():
@@ -51,6 +63,7 @@ class LearnEnv():
     def reset(self):
         self.total_reward = 0.0
         self.funds = 0.0
+        self.assets = 0.0
         self.current_id = self.START_ID
         self.done = False
         self.win = 0
@@ -59,6 +72,7 @@ class LearnEnv():
         self.df_action = self.DF.copy()
         self.df_action = self.df_action.assign(reward=0.)
         self.df_action = self.df_action.assign(funds=0.)
+        self.df_action = self.df_action.assign(assets=0.)
         self.df_action = self.df_action.assign(action=0)
         self.df_action = self.df_action.assign(win=0)
         self.df_action = self.df_action.assign(lose=0)
@@ -71,6 +85,7 @@ class LearnEnv():
         else:
             reward = self.df_action.at[self.current_id, "diff"]
             self.funds += reward
+            self.assets = self.funds
             self.total_reward += reward
 
             if reward > 0:
@@ -82,6 +97,7 @@ class LearnEnv():
 
         self.df_action.at[self.current_id, "reward"] = self.total_reward
         self.df_action.at[self.current_id, "funds"] = self.funds
+        self.df_action.at[self.current_id, "assets"] = self.assets
         self.df_action.at[self.current_id, "win"] = self.win
         self.df_action.at[self.current_id, "lose"] = self.lose
 
@@ -92,7 +108,14 @@ class LearnEnv():
         return self.observe(), reward, self.done, {}
 
     def render(self):
-        print(self.df_action.loc[self.current_id-1])
+        print("id: "+str(self.current_id))
+        print("total_reward: "+str(self.total_reward) +
+              ", funds: "+str(self.funds) +
+              ", assets: "+str(self.assets) +
+              ", win: "+str(self.win) +
+              ", lose: "+str(self.lose))
+        print("observe:")
+        print(self.observe())
 
     def observe(self):
         obs = np.array(
@@ -116,7 +139,7 @@ def build_agent(env, experiment=None):
         "gamma": 0.95,
         "start_epsilon": 1.0,
         "end_epsilon": 0.3,
-        "decay_steps": 200 * 750,
+        "decay_steps": env.data_len * 200,
         "replay_buffer_capacity": 10 ** 6,
         "ddqn_replay_start_size": 500,
         "ddqn_update_interval": 1,
@@ -159,40 +182,40 @@ def build_agent(env, experiment=None):
     return agent
 
 
-def learn_agent(env, agent, experiment=None):
-    n_episodes = 500
+def train_agent(env, agent):
+    obs = env.reset()
+    reward = 0
+    done = False
 
-    for i in range(1, n_episodes + 1):
-        obs = env.reset()
-        reward = 0
-        done = False
-        R = 0
+    env.render()
 
-        while not done:
-            action = agent.act_and_train(obs, reward)
-            obs, reward, done, _ = env.step(action)
-            R += reward
+    while not done:
+        action = agent.act_and_train(obs, reward)
+        obs, reward, done, _ = env.step(action)
 
-        agent.stop_episode_and_train(obs, reward, done)
+        env.render()
 
-        metrics = {
-            "reward": R,
-            "epsilon": agent.explorer.epsilon,
-            "win": env.win,
-            "lose": env.lose,
-            "funds": env.funds
-        }
-        if experiment is not None:
-            experiment.log_metrics(metrics, step=i)
+    agent.stop_episode_and_train(obs, reward, done)
 
-        if i % 10 == 0:
-            print("episode:", i, ", R:", R, ", statistics:", agent.get_statistics(), ", epsilon:", agent.explorer.epsilon)
-            env.render()
+    metrics = {
+        "reward": env.total_reward,
+        "epsilon": agent.explorer.epsilon,
+        "win": env.win,
+        "lose": env.lose,
+        "funds": env.funds,
+        "assets": env.assets
+    }
+
+    df_result = env.df_action.query(str(env.START_ID)+" <= id <= "+str(env.END_ID)).copy()
+
+    return df_result, metrics
 
 
-def simulate_agent(env, agent, experiment=None):
+def simulate_agent(env, agent):
     obs = env.reset()
     done = False
+
+    env.render()
 
     while not done:
         action = agent.act(obs)
@@ -202,34 +225,42 @@ def simulate_agent(env, agent, experiment=None):
 
     agent.stop_episode()
 
+    metrics = {
+        "reward": env.total_reward,
+        "epsilon": agent.explorer.epsilon,
+        "win": env.win,
+        "lose": env.lose,
+        "funds": env.funds,
+        "assets": env.assets
+    }
+
     df_result = env.df_action.query(str(env.START_ID) + " <= id <= " + str(env.END_ID)).copy()
 
-    if experiment is not None:
-        experiment.log_asset_data(df_result.to_csv(), file_name="result.csv")
-
-    return df_result
+    return df_result, metrics
 
 
-def build_figure_win_vs_lose(df_result, experiment=None):
+def build_figure_result(df_result, experiment=None):
     fig = plt.figure(figsize=(20, 5))
     subplot = fig.add_subplot(111)
     subplot.plot(df_result["win"], label="win")
     subplot.plot(df_result["lose"], label="lose")
     subplot.legend()
 
-    plt.show()
-
     if experiment is not None:
         experiment.log_figure(figure_name="win_vs_lose", figure=fig)
 
-
-def build_figure_reward(df_result, experiment=None):
     fig = plt.figure(figsize=(20, 5))
-    subplot = fig.add_subplot(222)
+    subplot = fig.add_subplot(111)
     subplot.plot(df_result["reward"], label="reward")
     subplot.legend()
 
-    plt.show()
-
     if experiment is not None:
         experiment.log_figure(figure_name="reward", figure=fig)
+
+    fig = plt.figure(figsize=(20, 5))
+    subplot = fig.add_subplot(111)
+    subplot.plot(df_result["assets"], label="assets")
+    subplot.legend()
+
+    if experiment is not None:
+        experiment.log_figure(figure_name="assets", figure=fig)

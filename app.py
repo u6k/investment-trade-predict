@@ -71,7 +71,7 @@ if __name__ == "__main__":
         experiment.end()
     elif args.subcommand == "agent_10":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_10")
-        agent_10.execute(experiment, max_episode=30)
+        agent_10.execute(experiment, max_episode=500)
         experiment.end()
     elif args.subcommand == "agent_11":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_11")

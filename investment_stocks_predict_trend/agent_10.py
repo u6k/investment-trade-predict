@@ -16,16 +16,16 @@ def execute(experiment=None, max_episode=500):
 
     for i in range(1, max_episode+1):
         print("*** episode: "+str(i)+" ***")
-        df_result, metrics = train_agent(train_env, agent, experiment)
+        df_result, metrics = train_agent(train_env, agent)
         if experiment is not None:
             experiment.log_asset_data(df_result.to_csv(), file_name="train_result."+str(i)+".csv")
             experiment.log_metrics(metrics, step=i)
 
-        if i % 10 == 0:
+        if i % 100 == 0:
             print("episode: " + str(i))
             print(metrics)
 
-            df_result, metrics = simulate_agent(test_env, agent, experiment)
+            df_result, metrics = simulate_agent(test_env, agent)
             if experiment is not None:
                 experiment.log_asset_data(df_result.to_csv(), file_name="test_result."+str(i)+".csv")
 
@@ -155,7 +155,7 @@ def build_agent(env, experiment=None):
         "gamma": 0.95,
         "start_epsilon": 1.0,
         "end_epsilon": 0.3,
-        "decay_steps": 200 * 250,
+        "decay_steps": env.data_len * 200,
         "replay_buffer_capacity": 10 ** 6,
         "ddqn_replay_start_size": 500,
         "ddqn_update_interval": 1,
@@ -198,7 +198,7 @@ def build_agent(env, experiment=None):
     return agent
 
 
-def train_agent(env, agent, experiment=None):
+def train_agent(env, agent):
     obs = env.reset()
     reward = 0
     done = False
@@ -227,7 +227,7 @@ def train_agent(env, agent, experiment=None):
     return df_result, metrics
 
 
-def simulate_agent(env, agent, experiment=None):
+def simulate_agent(env, agent):
     obs = env.reset()
     done = False
 
