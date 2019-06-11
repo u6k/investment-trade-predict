@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- [#7133: 銘柄リストに、2018年の開始ID、終了ID、2019年の開始IDが欲しい](https://redmine.u6k.me/issues/7133)
+
 ## [0.5.0] - 2019-06-07
 
 ### Added
