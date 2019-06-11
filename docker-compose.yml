@@ -3,8 +3,8 @@ version: '3'
 services:
   app:
     build: .
-    environment:
-      - "COMET_ML_API_KEY=${COMET_ML_API_KEY}"
+    env_file:
+      - ".env"
     volumes:
       - ".:/var/myapp"
     command: /bin/sh -c "pipenv install -d && pipenv run lint && pipenv run test"

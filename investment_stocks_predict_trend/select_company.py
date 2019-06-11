@@ -1,70 +1,107 @@
+import os
 import pandas as pd
 import numpy as np
+import psycopg2
 
 
-def preprocessing():
-    df_companies_csv = pd.read_csv("local/companies.csv")
-    df_companies_csv.info()
-    print(df_companies_csv.head())
-    print(df_companies_csv.tail())
+def export_stock_prices():
+    con_config = {
+        "host": os.environ["DB_HOST"],
+        "port": os.environ["DB_PORT"],
+        "database": os.environ["DB_DATABASE"],
+        "user": os.environ["DB_USERNAME"],
+        "password": os.environ["DB_PASSWORD"]
+    }
 
-    df_profit = df_companies_csv.copy()
-    df_profit = df_profit[["ticker_symbol", "name"]]
-    df_profit = df_profit.dropna()
-    df_profit = df_profit.assign(ticker_symbol=df_profit["ticker_symbol"].astype(int))
-    df_profit = df_profit.sort_values("ticker_symbol")
-    df_profit = df_profit.drop_duplicates()
-    df_profit = df_profit.set_index("ticker_symbol")
-    df_profit = df_profit.assign(profit=0.0)
-    df_profit = df_profit.assign(volume=0.0)
-    df_profit = df_profit.assign(data_size=0.0)
+    con = psycopg2.connect(**con_config)
 
-    df_profit.info()
-    print(df_profit.head())
-    print(df_profit.tail())
+    df_companies = pd.read_sql(sql="select * from companies", con=con)
 
-    for symbol in df_profit.index:
-        df_prices_csv = pd.read_csv("local/stock_prices/stock_prices." + str(symbol) + ".csv")
+    df_companies = df_companies[["ticker_symbol", "name", "market"]]
+    df_companies = df_companies.sort_values("ticker_symbol")
+    df_companies = df_companies.assign(id=np.arange(len(df_companies)))
+    df_companies = df_companies.set_index("id")
 
-        df = df_prices_csv.copy()
-        df = df[["date", "opening_price", "close_price", "turnover"]]
+    print(df_companies.info())
+
+    for ticker_symbol in df_companies["ticker_symbol"].values:
+        print(f"ticker_symbol: {ticker_symbol}")
+
+        df = pd.read_sql(sql=f"select * from stock_prices where ticker_symbol='{ticker_symbol}'",
+                         con=con)
+
         df = df.sort_values("date")
-        df = df.drop_duplicates()
         df = df.assign(id=np.arange(len(df)))
         df = df.set_index("id")
 
-        for idx in df.index:
-            if df.at[idx, "opening_price"] < df.at[idx, "close_price"]:
-                df.at[idx, "profit"] = df.at[idx, "close_price"] - df.at[idx, "opening_price"]
+        print(df.info())
+
+        df.to_csv(f"local/stock_prices/stock_prices.{ticker_symbol}.csv")
+
+
+def analysis():
+    df_companies = pd.read_csv("local/companies.csv")
+
+    df_companies = df_companies.dropna()
+    df_companies = df_companies[["ticker_symbol", "name", "market"]]
+    df_companies = df_companies.assign(ticker_symbol=df_companies["ticker_symbol"].astype(int))
+    df_companies = df_companies.sort_values("ticker_symbol")
+    df_companies = df_companies.assign(id=np.arange(len(df_companies)))
+    df_companies = df_companies.set_index("id")
+
+    print(df_companies.head())
+    print(df_companies.info())
+
+    df_analysed = df_companies.copy()
+
+    for id in df_analysed.index:
+        ticker_symbol = df_analysed.at[id, "ticker_symbol"]
+        print(f"id: {id}, ticker_symbol: {ticker_symbol}")
+
+        df_prices = pd.read_csv(f"local/stock_prices/stock_prices.{ticker_symbol}.csv", index_col=0)
+        df_prices = df_prices.sort_values("date")
+        df_prices = df_prices.drop_duplicates()
+        df_prices["id"] = np.arange(len(df_prices))
+        df_prices = df_prices.set_index("id")
+
+        if len(df_prices) < 2500:
+            continue
+
+        for idx in df_prices.index:
+            open_price = df_prices.at[idx, "open_price"]
+            close_price = df_prices.at[idx, "close_price"]
+            day_trade_profit = close_price - open_price
+
+            if day_trade_profit > 0:
+                df_prices.at[idx, "day_trade_profit"] = day_trade_profit
             else:
-                df.at[idx, "profit"] = 0.0
+                df_prices.at[idx, "day_trade_profit"] = 0.0
 
-        df_profit.at[symbol, "data_size"] = len(df)
+        df_analysed.at[id, "data_size"] = len(df_prices)
 
-        if len(df) > 250:
-            df_subset = df[-250:].copy()
-            df_profit.at[symbol, "profit"] = df_subset["profit"].sum()
-            df_profit.at[symbol, "volume"] = df_subset["turnover"].sum()
+        df_analysed.at[id, "latest_open_price"] = df_prices.at[df_prices.index[-1], "open_price"]
+        df_analysed.at[id, "latest_high_price"] = df_prices.at[df_prices.index[-1], "high_price"]
+        df_analysed.at[id, "latest_low_price"] = df_prices.at[df_prices.index[-1], "low_price"]
+        df_analysed.at[id, "latest_close_price"] = df_prices.at[df_prices.index[-1], "close_price"]
+        df_analysed.at[id, "latest_volume"] = df_prices.at[df_prices.index[-1], "volume"]
+        df_analysed.at[id, "latest_adjusted_close_price"] = df_prices.at[df_prices.index[-1], "adjusted_close_price"]
 
-        print(df_profit.loc[symbol])
+        for window in [5, 10, 20, 40, 80]:
+            df_prices[f"sma_{window}"] = df_prices["adjusted_close_price"].rolling(window).mean()
 
-    df_profit.to_csv("local/profit.csv")
+            sma_latest = df_prices.at[df_prices.index[-1], f"sma_{window}"]
+            sma_start = df_prices.at[df_prices.index[-window], f"sma_{window}"]
+            diff_sma = sma_latest - sma_start
 
-    return df_profit
+            df_analysed.at[id, f"diff_sma_{window}"] = diff_sma
 
+            df_analysed.at[id, f"volume_{window}"] = df_prices["volume"][-window:].values.sum()
 
-def top():
-    df_profit = pd.read_csv("local/profit.csv", index_col=0)
-    df_profit.info()
-    print(df_profit.head())
-    print(df_profit.tail())
+            df_analysed.at[id, f"day_trade_profit_{window}"] = df_prices["day_trade_profit"][-window:].values.sum()
 
-    df = df_profit.copy()
-    df = df.query("data_size > 2500.0")
-    df = df.query("volume > 10000000")
-    df = df.query("profit > 5000.0")
-    print(df)
+        for year in [2015, 2016, 2017, 2018, 2019]:
+            df_analysed.at[id, f"start_id_{year}"] = df_prices.query(f"'{year}-01-01' <= date <= '{year}-12-31'").index[0]
+            df_analysed.at[id, f"end_id_{year}"] = df_prices.query(f"'{year}-01-01' <= date <= '{year}-12-31'").index[-1]
 
-    df.to_csv("local/top_companies.csv")
-
-    return df
+        df_prices.to_csv(f"local/stock_prices/stock_prices.{ticker_symbol}.analysed.csv")
+        df_analysed.to_csv("local/companies.analysed.csv")
