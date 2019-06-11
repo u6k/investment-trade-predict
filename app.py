@@ -25,10 +25,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.subcommand == "select_company.preprocessing":
-        select_company.preprocessing()
-    elif args.subcommand == "select_company.top":
-        select_company.top()
+    if args.subcommand == "select_company.export_stock_prices":
+        select_company.export_stock_prices()
+    elif args.subcommand == "select_company.analysis":
+        select_company.analysis()
     elif args.subcommand == "random_forest_1.scores":
         random_forest_1.scores()
     elif args.subcommand == "random_forest_2.scores":

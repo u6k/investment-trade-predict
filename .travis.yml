@@ -6,6 +6,7 @@ addons:
       - docker-ce
 
 script:
+  - cp .env.sample .env
   - docker-compose build
   - docker-compose run app
 
