@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [#7133: 銘柄リストに、2018年の開始ID、終了ID、2019年の開始IDが欲しい](https://redmine.u6k.me/issues/7133)
+- [#7131: 銘柄選出で直近のOHLCも表示してほしい](https://redmine.u6k.me/issues/7131)
 
 ## [0.5.0] - 2019-06-07
 

@@ -79,6 +79,13 @@ def analysis():
 
         df_analysed.at[id, "data_size"] = len(df_prices)
 
+        df_analysed.at[id, "latest_open_price"] = df_prices.at[df_prices.index[-1], "open_price"]
+        df_analysed.at[id, "latest_high_price"] = df_prices.at[df_prices.index[-1], "high_price"]
+        df_analysed.at[id, "latest_low_price"] = df_prices.at[df_prices.index[-1], "low_price"]
+        df_analysed.at[id, "latest_close_price"] = df_prices.at[df_prices.index[-1], "close_price"]
+        df_analysed.at[id, "latest_volume"] = df_prices.at[df_prices.index[-1], "volume"]
+        df_analysed.at[id, "latest_adjusted_close_price"] = df_prices.at[df_prices.index[-1], "adjusted_close_price"]
+
         for window in [5, 10, 20, 40, 80]:
             df_prices[f"sma_{window}"] = df_prices["adjusted_close_price"].rolling(window).mean()
 
