@@ -17,6 +17,7 @@ comet_ml = "*"
 matplotlib = "*"
 keras = "*"
 tensorflow = "*"
+psycopg2 = "*"
 
 [requires]
 python_version = "3.7"
