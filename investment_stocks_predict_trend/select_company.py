@@ -105,3 +105,14 @@ def analysis():
 
         df_prices.to_csv(f"local/stock_prices/stock_prices.{ticker_symbol}.analysed.csv")
         df_analysed.to_csv("local/companies.analysed.csv")
+
+def analysis_2():
+    df = pd.read_csv("local/companies.analysed.csv", index_col=0)
+
+    df = df[["ticker_symbol", "name", "data_size", "latest_open_price", "day_trade_profit_80"]]
+
+    df = df.query("data_size > 2500")
+    df = df.query("latest_open_price < 1000")
+    df = df.sort_values("day_trade_profit_80", ascending=False)
+
+    df.to_csv("local/companies.analysed.2.csv")

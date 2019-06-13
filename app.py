@@ -29,6 +29,8 @@ if __name__ == "__main__":
         select_company.export_stock_prices()
     elif args.subcommand == "select_company.analysis":
         select_company.analysis()
+    elif args.subcommand == "select_company.analysis_2":
+        select_company.analysis_2()
     elif args.subcommand == "random_forest_1.scores":
         random_forest_1.scores()
     elif args.subcommand == "random_forest_2.scores":
