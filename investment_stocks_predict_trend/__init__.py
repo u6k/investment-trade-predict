@@ -1,4 +1,4 @@
-VERSION = '0.8.0-develop'
+VERSION = '0.8.0'
 
 
 def hello():

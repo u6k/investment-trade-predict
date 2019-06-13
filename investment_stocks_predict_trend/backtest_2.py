@@ -87,7 +87,7 @@ def execute():
                     "ticker_symbol": ticker_symbol,
                     "buy_price": df_profit.at[ticker_symbol, "open_price"],
                     "buy_stocks": buy_stocks
-                    })
+                })
 
             for hold_stock in hold_stocks:
                 funds -= hold_stock["buy_price"] * hold_stock["buy_stocks"]
