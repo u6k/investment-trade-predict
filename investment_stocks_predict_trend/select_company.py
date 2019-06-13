@@ -106,6 +106,7 @@ def analysis():
         df_prices.to_csv(f"local/stock_prices/stock_prices.{ticker_symbol}.analysed.csv")
         df_analysed.to_csv("local/companies.analysed.csv")
 
+
 def analysis_2():
     df = pd.read_csv("local/companies.analysed.csv", index_col=0)
 

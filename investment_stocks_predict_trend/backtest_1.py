@@ -1,6 +1,7 @@
 import datetime
 import pandas as pd
 
+
 def execute():
     # target ticker_symbols
     df_companies = pd.read_csv("local/companies.analysed.csv", index_col=0)
@@ -74,7 +75,7 @@ def execute():
                 "open_price": df_profit.at[ticker_symbol, "open_price"],
                 "close_price": df_profit.at[ticker_symbol, "close_price"],
                 "buy_stocks": buy_stocks
-                })
+            })
 
         for index, action in enumerate(actions):
             funds += -action["open_price"] * action["buy_stocks"] + action["close_price"] * action["buy_stocks"]
@@ -88,14 +89,6 @@ def execute():
 
         df_profit.to_csv(f"local/test_1/profit.{date_str}.csv")
         df_result.to_csv(f"local/test_1/result.{year}.csv")
-
-
-
-
-
-
-
-
 
 
 def execute_single():
@@ -137,8 +130,6 @@ def execute_single():
         df_result.to_csv(f"local/test_1/result.single.{year}.csv")
 
 
-
-
 def calc_day_trade_profit(df, date):
     df_current = df.query(f"date=='{date}'").copy()
     if len(df_current) == 0:
@@ -151,8 +142,6 @@ def calc_day_trade_profit(df, date):
         profit = 0
 
     return profit
-
-
 
 
 def date_array(year):
