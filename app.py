@@ -17,6 +17,7 @@ from investment_stocks_predict_trend import agent_10
 from investment_stocks_predict_trend import agent_11
 from investment_stocks_predict_trend import predict_1
 from investment_stocks_predict_trend import predict_2
+from investment_stocks_predict_trend import backtest_1
 
 
 if __name__ == "__main__":
@@ -29,6 +30,8 @@ if __name__ == "__main__":
         select_company.export_stock_prices()
     elif args.subcommand == "select_company.analysis":
         select_company.analysis()
+    elif args.subcommand == "select_company.analysis_2":
+        select_company.analysis_2()
     elif args.subcommand == "random_forest_1.scores":
         random_forest_1.scores()
     elif args.subcommand == "random_forest_2.scores":
@@ -85,5 +88,9 @@ if __name__ == "__main__":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="predict_2")
         predict_2.execute(experiment)
         experiment.end()
+    elif args.subcommand == "backtest_1":
+        backtest_1.execute()
+    elif args.subcommand == "backtest_1.single":
+        backtest_1.execute_single()
     else:
         raise Exception("unknown subcommand: " + args.subcommand)
