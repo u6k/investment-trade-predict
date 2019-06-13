@@ -18,6 +18,7 @@ from investment_stocks_predict_trend import agent_11
 from investment_stocks_predict_trend import predict_1
 from investment_stocks_predict_trend import predict_2
 from investment_stocks_predict_trend import backtest_1
+from investment_stocks_predict_trend import backtest_2
 
 
 if __name__ == "__main__":
@@ -92,5 +93,7 @@ if __name__ == "__main__":
         backtest_1.execute()
     elif args.subcommand == "backtest_1.single":
         backtest_1.execute_single()
+    elif args.subcommand == "backtest_2":
+        backtest_2.execute()
     else:
         raise Exception("unknown subcommand: " + args.subcommand)
