@@ -11,7 +11,7 @@ def execute(experiment=None, max_episode=500):
     df = load_data(TICKER_SYMBOL)
     print(df)
 
-    train_env = TrainEnv(df, 4804, 7057)
+    train_env = TrainEnv(df, 5881, 7057)
     test_env = TrainEnv(df, 7057, 7750)
 
     agent = build_agent(train_env, experiment)
@@ -78,7 +78,7 @@ class TrainEnv():
         elif self.buy_stocks == 0:
             # buy
             self.buy_price = self.df_result.at[self.current_id, "close_price"]
-            self.buy_stocks = self.funds // (self.buy_price * 100) * 100
+            self.buy_stocks = (self.funds * 0.5) // (self.buy_price * 100) * 100
             self.funds -= self.buy_price * self.buy_stocks
 
             reward = 0.0
