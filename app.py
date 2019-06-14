@@ -15,6 +15,7 @@ from investment_stocks_predict_trend import agent_8
 from investment_stocks_predict_trend import agent_9
 from investment_stocks_predict_trend import agent_10
 from investment_stocks_predict_trend import agent_11
+from investment_stocks_predict_trend import agent_12
 from investment_stocks_predict_trend import predict_1
 from investment_stocks_predict_trend import predict_2
 from investment_stocks_predict_trend import backtest_1
@@ -80,6 +81,10 @@ if __name__ == "__main__":
     elif args.subcommand == "agent_11":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_11")
         agent_11.execute(experiment)
+        experiment.end()
+    elif args.subcommand == "agent_12":
+        experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_12")
+        agent_12.execute(experiment)
         experiment.end()
     elif args.subcommand == "predict_1":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="predict_1")
