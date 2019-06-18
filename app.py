@@ -103,11 +103,18 @@ if __name__ == "__main__":
         backtest_2.execute()
     elif args.subcommand == "backtest_3":
         backtest_3.execute()
-    elif args.subcommand == "backtest_3.single":
-        backtest_3.execute_single()
+    elif args.subcommand == "backtest_3.2":
+        backtest_3.execute_2()
+    elif args.subcommand == "backtest_3.preprocess":
+        backtest_3.preprocess()
+    elif args.subcommand == "backtest_3.simulate_trade":
+        df_stocks = backtest_3.simulate_trade("1301", "2017-07-01", "2018-06-30", 5, 20)
+        df_stocks.to_csv("local/test_3/result.1301.2018.csv")
     elif args.subcommand == "backtest_3.report":
-        backtest_3.execute_report()
+        backtest_3.report()
     elif args.subcommand == "backtest_3.report_2":
-        backtest_3.execute_report_2()
+        backtest_3.report_2()
+    elif args.subcommand == "backtest_3.train_profit_rate":
+        backtest_3.train_profit_rate()
     else:
         raise Exception("unknown subcommand: " + args.subcommand)
