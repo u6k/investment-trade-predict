@@ -21,6 +21,7 @@ from investment_stocks_predict_trend import predict_2
 from investment_stocks_predict_trend import backtest_1
 from investment_stocks_predict_trend import backtest_2
 from investment_stocks_predict_trend import backtest_3
+from investment_stocks_predict_trend import preprocess
 
 
 if __name__ == "__main__":
@@ -95,6 +96,8 @@ if __name__ == "__main__":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="predict_2")
         predict_2.execute(experiment)
         experiment.end()
+    elif args.subcommand == "preprocess":
+        preprocess.preprocess()
     elif args.subcommand == "backtest_1":
         backtest_1.execute()
     elif args.subcommand == "backtest_1.single":
@@ -105,8 +108,6 @@ if __name__ == "__main__":
         backtest_3.execute()
     elif args.subcommand == "backtest_3.2":
         backtest_3.execute_2()
-    elif args.subcommand == "backtest_3.preprocess":
-        backtest_3.preprocess()
     elif args.subcommand == "backtest_3.simulate_trade":
         df_stocks = backtest_3.simulate_trade("1301", "2017-07-01", "2018-06-30", 5, 20)
         df_stocks.to_csv("local/test_3/result.1301.2018.csv")

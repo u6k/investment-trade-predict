@@ -1,77 +1,10 @@
 import datetime
 import pandas as pd
 import numpy as np
-import os
-import sklearn.preprocessing as sp
 from sklearn.model_selection import train_test_split
 # from sklearn.linear_model import LassoCV, Ridge
 from sklearn.svm import SVC
 from sklearn.metrics import mean_squared_error
-
-
-def preprocess():
-    df_companies = pd.read_csv("local/stock_prices/companies.csv", index_col=0) \
-        .sort_values("ticker_symbol")
-    df_companies["id"] = np.arange(len(df_companies))
-    df_companies = df_companies.set_index("id")
-
-    for ticker_symbol in df_companies["ticker_symbol"]:
-        print(f"ticker_symbol: {ticker_symbol}")
-
-        df_prices = pd.read_csv(f"local/stock_prices/stock_prices.{ticker_symbol}.csv", index_col=0) \
-            .sort_values("date") \
-            .drop_duplicates()
-
-        df_prices["id"] = np.arange(len(df_prices))
-        df_prices = df_prices.set_index("id")
-
-        df_prices["adjusted_close_price_minmax"] = sp.minmax_scale(df_prices["adjusted_close_price"])
-
-        for sma_len in [5, 10, 20, 40, 80]:
-            df_prices[f"sma_{sma_len}"] = df_prices["adjusted_close_price_minmax"].rolling(sma_len).mean()
-
-        for rsi_len in [5, 10, 14, 20, 40]:
-            for prices_id in df_prices.index[rsi_len:]:
-                up_total = 0.0
-                down_total = 0.0
-                for i in range(0, rsi_len):
-                    diff = df_prices.at[prices_id-i, "adjusted_close_price"] - df_prices.at[prices_id-rsi_len, "adjusted_close_price"]
-                    if diff >= 0.0:
-                        up_total += diff
-                    else:
-                        down_total -= diff
-                if up_total > 0.0:
-                    df_prices.at[prices_id, f"rsi_{rsi_len}"] = up_total / (up_total + down_total) * 100.0
-                else:
-                    df_prices.at[prices_id, f"rsi_{rsi_len}"] = 0.0
-
-        for roc_len in [5, 10, 20, 25, 40]:
-            for prices_id in df_prices.index[roc_len:]:
-                df_prices.at[prices_id, f"roc_{roc_len}"] = df_prices.at[prices_id, "adjusted_close_price"] / \
-                    df_prices.at[prices_id-roc_len, "adjusted_close_price"] * 100.0
-
-        for momentum_len in [5, 10, 20, 40]:
-            for prices_id in df_prices.index[momentum_len:]:
-                df_prices.at[prices_id, f"momentum_{momentum_len}"] = \
-                    df_prices.at[prices_id, "adjusted_close_price"] \
-                    - df_prices.at[prices_id-momentum_len, "adjusted_close_price"]
-
-        df_prices["return_rate"] = df_prices["close_price"] / df_prices["open_price"]
-
-        for prices_id in df_prices.index:
-            day_trade_profit = df_prices.at[prices_id, "close_price"] - df_prices.at[prices_id, "open_price"]
-            if day_trade_profit <= 0:
-                day_trade_profit = 0.0
-            df_prices.at[prices_id, "day_trade_profit"] = day_trade_profit
-
-        companies_id = df_companies.query(f"ticker_symbol=='{ticker_symbol}'").index[0]
-        df_companies.at[companies_id, "data_size"] = len(df_prices)
-        for year in range(2008, 2019):
-            df_companies.at[companies_id, f"volume_{year}"] = df_prices.query(f"'{year}-01-01' <= date <= '{year}-12-31'")["volume"].sum()
-            df_companies.at[companies_id, f"day_trade_profit_{year}"] = df_prices.query(f"'{year}-01-01' <= date <= '{year}-12-31'")["day_trade_profit"].sum()
-
-        df_prices.to_csv(f"local/stock_prices_preprocessed/stock_prices.{ticker_symbol}.csv")
-        df_companies.to_csv("local/stock_prices_preprocessed/companies.csv")
 
 
 def execute():
@@ -83,7 +16,7 @@ def execute():
     df_companies = df_companies.query("volume_2018 > 1000000")
     df_companies = df_companies.sort_values("ticker_symbol")
 
-    for sma_len in [(5,10), (5,20), (5,40), (5,80), (10,20), (10,40), (10,80), (20,40), (20,80), (40,80)]:
+    for sma_len in [(5, 10), (5, 20), (5, 40), (5, 80), (10, 20), (10, 40), (10, 80), (20, 40), (20, 80), (40, 80)]:
         sma_short_len = sma_len[0]
         sma_long_len = sma_len[1]
 
@@ -94,7 +27,6 @@ def execute():
             df_result = simulate_trade(df_prices, sma_short_len, sma_long_len)
 
             df_result.to_csv(f"{output_path}/result.{ticker_symbol}.{sma_short_len}_{sma_long_len}.csv")
-
 
 
 def report():
@@ -185,7 +117,7 @@ def simulate_trade(df_prices, sma_short_len, sma_long_len):
     df_result = df_prices.copy()
     df_result = df_result[["date", "open_price", "high_price", "low_price", "close_price", "adjusted_close_price"]]
     df_result = df_result.drop_duplicates() \
-            .sort_values("date")
+        .sort_values("date")
     df_result[f"sma_{sma_short_len}"] = df_result["adjusted_close_price"].rolling(sma_short_len).mean()
     df_result[f"sma_{sma_long_len}"] = df_result["adjusted_close_price"].rolling(sma_long_len).mean()
     df_result = df_result.assign(id=np.arange(len(df_result)))
