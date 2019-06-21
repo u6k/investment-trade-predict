@@ -1,30 +1,44 @@
 import datetime
 import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split
 # from sklearn.linear_model import LassoCV, Ridge
 from sklearn.svm import SVC
 from sklearn.metrics import mean_squared_error
 
+from investment_stocks_predict_trend import preprocess
+
 
 def execute():
-    base_path = "local/stock_prices"
+    base_path = "local/stock_prices_preprocessed"
     output_path = "local/test_3"
 
-    df_companies = pd.read_csv("local/stock_prices_preprocessed/companies.csv")
+    df_companies = pd.read_csv(f"{base_path}/companies.csv")
     df_companies = df_companies.query("data_size > 2500")
-    df_companies = df_companies.query("volume_2018 > 1000000")
-    df_companies = df_companies.sort_values("ticker_symbol")
 
-    for sma_len in [(5, 10), (5, 20), (5, 40), (5, 80), (10, 20), (10, 40), (10, 80), (20, 40), (20, 80), (40, 80)]:
-        sma_short_len = sma_len[0]
-        sma_long_len = sma_len[1]
+    for ticker_symbol in df_companies["ticker_symbol"].values:
+        df_prices = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-        for ticker_symbol in df_companies["ticker_symbol"].values:
+        for sma_len in [(5, 10), (5, 20), (5, 40), (5, 80), (10, 20), (10, 40), (10, 80), (20, 40), (20, 80), (40, 80)]:
+            sma_short_len = sma_len[0]
+            sma_long_len = sma_len[1]
+
             print(f"{sma_short_len}, {sma_long_len}, {ticker_symbol}")
 
-            df_prices = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
-            df_result = simulate_trade(df_prices, sma_short_len, sma_long_len)
+            df_result = preprocess.simulate_trade(df_prices, sma_short_len, sma_long_len)
+            df_result = df_result[["date",
+                                   "open_price",
+                                   "high_price",
+                                   "low_price",
+                                   "close_price",
+                                   "adjusted_close_price",
+                                   "adjusted_close_price_minmax",
+                                   f"sma_{sma_short_len}",
+                                   f"sma_{sma_long_len}",
+                                   "buy_price",
+                                   "losscut_price",
+                                   "action",
+                                   "profit"]]
+            df_result = df_result.query("'2008-01-01' <= date <= '2018-12-31'")
 
             df_result.to_csv(f"{output_path}/result.{ticker_symbol}.{sma_short_len}_{sma_long_len}.csv")
 
@@ -108,62 +122,6 @@ def train_profit_rate():
         df_test.at[index, "result"] = (df_test.at[index, "pred"] >= 1.0 and df_test.at[index, "test"] >= 1.0) \
             or (df_test.at[index, "pred"] < 1.0 and df_test.at[index, "test"] < 1.0)
     df_test.to_csv("local/test_3/5_20/2018/test.csv")
-
-
-def simulate_trade(df_prices, sma_short_len, sma_long_len):
-    losscut_rate = 0.95
-
-    # data preprocess
-    df_result = df_prices.copy()
-    df_result = df_result[["date", "open_price", "high_price", "low_price", "close_price", "adjusted_close_price"]]
-    df_result = df_result.drop_duplicates() \
-        .sort_values("date")
-    df_result[f"sma_{sma_short_len}"] = df_result["adjusted_close_price"].rolling(sma_short_len).mean()
-    df_result[f"sma_{sma_long_len}"] = df_result["adjusted_close_price"].rolling(sma_long_len).mean()
-    df_result = df_result.assign(id=np.arange(len(df_result)))
-    df_result = df_result.set_index("id")
-
-    # simulate
-    buy_price = 0.0
-    losscut_price = 0.0
-
-    for current_id in df_result.index[sma_long_len:]:
-        sma_short_1 = df_result.at[current_id-1, f"sma_{sma_short_len}"]
-        sma_long_1 = df_result.at[current_id-1, f"sma_{sma_long_len}"]
-        sma_short_2 = df_result.at[current_id-2, f"sma_{sma_short_len}"]
-        sma_long_2 = df_result.at[current_id-2, f"sma_{sma_long_len}"]
-
-        if (buy_price > 0) and (losscut_price > df_result.at[current_id-1, "close_price"]):
-            # loss cut
-            df_result.at[current_id, "profit"] = df_result.at[current_id, "close_price"] - buy_price
-            df_result.at[current_id, "action"] = "losscut"
-
-            buy_price = 0.0
-            losscut_price = 0.0
-        elif (buy_price > 0) and (sma_short_2 > sma_long_2) and (sma_short_1 <= sma_long_1):
-            # sell
-            df_result.at[current_id, "profit"] = df_result.at[current_id, "close_price"] - buy_price
-            df_result.at[current_id, "action"] = "sell"
-
-            buy_price = 0.0
-            losscut_price = 0.0
-        elif (buy_price == 0) and (sma_short_2 < sma_long_2) and (sma_short_1 >= sma_long_1):
-            # buy
-            df_result.at[current_id, "action"] = "buy"
-
-            buy_price = df_result.at[current_id, "close_price"]
-            losscut_price = buy_price * losscut_rate
-        else:
-            # stay
-            df_result.at[current_id, "action"] = ""
-
-            if losscut_price < (df_result.at[current_id, "close_price"] * losscut_rate):
-                losscut_price = df_result.at[current_id, "close_price"] * losscut_rate
-
-        df_result.at[current_id, "buy_price"] = buy_price
-        df_result.at[current_id, "losscut_price"] = losscut_price
-
-    return df_result
 
 
 def execute_2():
@@ -276,7 +234,7 @@ def execute_2():
             if (sma_short_2 < sma_long_2) and (sma_short_1 >= sma_long_1):
                 test_start_date = (date - datetime.timedelta(days=365)).strftime("%Y-%m-%d")
                 test_end_date = date_str
-                df_test_trade = simulate_trade(load_base_dir, ticker_symbol, test_start_date, test_end_date, sma_short_len, sma_long_len)
+                df_test_trade = preprocess.simulate_trade(load_base_dir, ticker_symbol, test_start_date, test_end_date, sma_short_len, sma_long_len)
                 df_test_trade = df_test_trade.dropna()
                 last_assets = df_test_trade["assets"].values[-1]
 
