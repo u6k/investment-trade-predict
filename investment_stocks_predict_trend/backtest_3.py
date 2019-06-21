@@ -75,24 +75,26 @@ def preprocess():
 
 
 def execute():
+    base_path = "local/stock_prices"
+    output_path = "local/test_3"
+
     df_companies = pd.read_csv("local/stock_prices_preprocessed/companies.csv")
     df_companies = df_companies.query("data_size > 2500")
     df_companies = df_companies.query("volume_2018 > 1000000")
     df_companies = df_companies.sort_values("ticker_symbol")
 
-    for short_sma in [5]:
-        for long_sma in [20]:
-            for year in range(2018, 2007, -1):
-                base_path = f"local/test_3/{short_sma}_{long_sma}/{year}"
-                os.makedirs(base_path)
+    for sma_len in [(5,10), (5,20), (5,40), (5,80), (10,20), (10,40), (10,80), (20,40), (20,80), (40,80)]:
+        sma_short_len = sma_len[0]
+        sma_long_len = sma_len[1]
 
-                df_companies.to_csv(f"{base_path}/companies.csv")
+        for ticker_symbol in df_companies["ticker_symbol"].values:
+            print(f"{sma_short_len}, {sma_long_len}, {ticker_symbol}")
 
-                for ticker_symbol in df_companies["ticker_symbol"].values:
-                    print(f"ticker_symbol: {ticker_symbol}")
-                    df_stocks = simulate_trade(ticker_symbol, f"{year}-01-01", f"{year}-12-31", short_sma, long_sma)
+            df_prices = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+            df_result = simulate_trade(df_prices, sma_short_len, sma_long_len)
 
-                    df_stocks.to_csv(f"{base_path}/result.{ticker_symbol}.csv")
+            df_result.to_csv(f"{output_path}/result.{ticker_symbol}.{sma_short_len}_{sma_long_len}.csv")
+
 
 
 def report():
@@ -176,108 +178,60 @@ def train_profit_rate():
     df_test.to_csv("local/test_3/5_20/2018/test.csv")
 
 
-def simulate_trade(base_path, ticker_symbol, start_date, end_date, short_sma_len, long_sma_len):
-    AVAILABLE_RATE = 0.5
-    BUY_STOCK_UNIT = 100
-    LOSS_CUT_RATE = 0.95
+def simulate_trade(df_prices, sma_short_len, sma_long_len):
+    losscut_rate = 0.95
 
-    # load data
-    df_stocks = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.csv")
-    df_stocks = df_stocks[["date", "open_price", "high_price", "low_price", "close_price", "volume",
-                           "adjusted_close_price", "adjusted_close_price_minmax", f"sma_{short_sma_len}", f"sma_{long_sma_len}"]]
-    df_stocks = df_stocks.drop_duplicates()
-    df_stocks = df_stocks.sort_values("date")
-    df_stocks["id"] = np.arange(len(df_stocks))
-    df_stocks = df_stocks.set_index("id")
+    # data preprocess
+    df_result = df_prices.copy()
+    df_result = df_result[["date", "open_price", "high_price", "low_price", "close_price", "adjusted_close_price"]]
+    df_result = df_result.drop_duplicates() \
+            .sort_values("date")
+    df_result[f"sma_{sma_short_len}"] = df_result["adjusted_close_price"].rolling(sma_short_len).mean()
+    df_result[f"sma_{sma_long_len}"] = df_result["adjusted_close_price"].rolling(sma_long_len).mean()
+    df_result = df_result.assign(id=np.arange(len(df_result)))
+    df_result = df_result.set_index("id")
 
     # simulate
-    df_tmp = df_stocks.query(f"'{start_date}' <= date <= '{end_date}'")
-    start_id = df_tmp.index[0]
-    end_id = df_tmp.index[-1]
-    current_id = start_id
-
-    funds = 10000000
-    win = 0
-    lose = 0
-    losscut = 0
     buy_price = 0.0
-    buy_stocks = 0
     losscut_price = 0.0
-    profit_take_price = 0.0
 
-    while current_id <= end_id:
-        before_long_sma = df_stocks.at[current_id-2, f"sma_{long_sma_len}"]
-        before_short_sma = df_stocks.at[current_id-2, f"sma_{short_sma_len}"]
-        current_long_sma = df_stocks.at[current_id-1, f"sma_{long_sma_len}"]
-        current_short_sma = df_stocks.at[current_id-1, f"sma_{short_sma_len}"]
-        action = ""
+    for current_id in df_result.index[sma_long_len:]:
+        sma_short_1 = df_result.at[current_id-1, f"sma_{sma_short_len}"]
+        sma_long_1 = df_result.at[current_id-1, f"sma_{sma_long_len}"]
+        sma_short_2 = df_result.at[current_id-2, f"sma_{sma_short_len}"]
+        sma_long_2 = df_result.at[current_id-2, f"sma_{sma_long_len}"]
 
-        if (buy_stocks > 0) and (losscut_price > df_stocks.at[current_id, "close_price"]):
+        if (buy_price > 0) and (losscut_price > df_result.at[current_id-1, "close_price"]):
             # loss cut
-            sell_price = df_stocks.at[current_id, "close_price"]
-            funds += sell_price * buy_stocks
+            df_result.at[current_id, "profit"] = df_result.at[current_id, "close_price"] - buy_price
+            df_result.at[current_id, "action"] = "losscut"
 
             buy_price = 0.0
-            buy_stocks = 0
-
-            losscut += 1
-            lose += 1
-
-            action = "losscut"
-        elif (buy_stocks > 0) and (profit_take_price > df_stocks.at[current_id, "close_price"]):
-            # profit take
-            sell_price = df_stocks.at[current_id, "close_price"]
-            funds += sell_price * buy_stocks
-
-            buy_price = 0.0
-            buy_stocks = 0
-
-            win += 1
-
-            action = "sell"
-        elif (buy_stocks == 0) and (before_long_sma > before_short_sma) and (current_long_sma <= current_short_sma):
-            # buy
-            buy_price = df_stocks.at[current_id, "close_price"]
-            buy_stocks = (funds * AVAILABLE_RATE) // (buy_price * BUY_STOCK_UNIT) * BUY_STOCK_UNIT
-            if buy_stocks > 0:
-                funds -= buy_price * buy_stocks
-                losscut_price = buy_price * LOSS_CUT_RATE
-                profit_take_price = buy_price * LOSS_CUT_RATE
-                action = "buy"
-            else:
-                buy_price = 0.0
-                buy_stocks = 0
-        elif (buy_stocks > 0) and (before_long_sma < before_short_sma) and (current_long_sma >= current_short_sma):
+            losscut_price = 0.0
+        elif (buy_price > 0) and (sma_short_2 > sma_long_2) and (sma_short_1 <= sma_long_1):
             # sell
-            sell_price = df_stocks.at[current_id, "close_price"]
-            funds += sell_price * buy_stocks
-
-            if buy_price < sell_price:
-                win += 1
-            else:
-                lose += 1
+            df_result.at[current_id, "profit"] = df_result.at[current_id, "close_price"] - buy_price
+            df_result.at[current_id, "action"] = "sell"
 
             buy_price = 0.0
-            buy_stocks = 0
+            losscut_price = 0.0
+        elif (buy_price == 0) and (sma_short_2 < sma_long_2) and (sma_short_1 >= sma_long_1):
+            # buy
+            df_result.at[current_id, "action"] = "buy"
 
-            action = "sell"
+            buy_price = df_result.at[current_id, "close_price"]
+            losscut_price = buy_price * losscut_rate
         else:
             # stay
-            if profit_take_price < (df_stocks.at[current_id, "close_price"] * LOSS_CUT_RATE):
-                profit_take_price = df_stocks.at[current_id, "close_price"] * LOSS_CUT_RATE
+            df_result.at[current_id, "action"] = ""
 
-        df_stocks.at[current_id, "funds"] = funds
-        df_stocks.at[current_id, "assets"] = funds + buy_stocks * df_stocks.at[current_id, "close_price"]
-        df_stocks.at[current_id, "buy_price"] = buy_price
-        df_stocks.at[current_id, "buy_stocks"] = buy_stocks
-        df_stocks.at[current_id, "win"] = win
-        df_stocks.at[current_id, "lose"] = lose
-        df_stocks.at[current_id, "losscut"] = losscut
-        df_stocks.at[current_id, "action"] = action
+            if losscut_price < (df_result.at[current_id, "close_price"] * losscut_rate):
+                losscut_price = df_result.at[current_id, "close_price"] * losscut_rate
 
-        current_id += 1
+        df_result.at[current_id, "buy_price"] = buy_price
+        df_result.at[current_id, "losscut_price"] = losscut_price
 
-    return df_stocks.copy()
+    return df_result
 
 
 def execute_2():
@@ -287,7 +241,7 @@ def execute_2():
     sma_short_len = 5
     sma_long_len = 20
     losscut_rate = 0.95
-    available_rate = 0.1
+    available_rate = 0.05
     total_available_rate = 0.5
     buy_stocks_unit = 100
 
@@ -295,7 +249,8 @@ def execute_2():
         .sort_values("ticker_symbol") \
         .set_index("ticker_symbol") \
         .query("data_size > 2500") \
-        .query("volume_2018 > 10000000")
+        .query("volume_2018 > 100000000")
+    print(df_companies.info())
 
     funds = 10000000
     win = 0
@@ -343,7 +298,7 @@ def execute_2():
                 df_action.at[action_id, "price"] = sell_price
                 df_action.at[action_id, "stocks"] = df_hold_stock.at[ticker_symbol, "buy_stocks"]
 
-                df_hold_stock.drop(ticker_symbol)
+                df_hold_stock = df_hold_stock.drop(ticker_symbol)
                 print(f"{ticker_symbol}: {action}")
 
             # sell signal
@@ -365,11 +320,11 @@ def execute_2():
                 df_action.at[action_id, "price"] = sell_price
                 df_action.at[action_id, "stocks"] = df_hold_stock.at[ticker_symbol, "buy_stocks"]
 
-                df_hold_stock.drop(ticker_symbol)
+                df_hold_stock = df_hold_stock.drop(ticker_symbol)
                 print(f"{ticker_symbol}: {action}")
 
             # update losscut price
-            if df_hold_stock.at[ticker_symbol, "losscut_price"] < (df_prices.at[current_id, "open_price"] * losscut_rate):
+            elif df_hold_stock.at[ticker_symbol, "losscut_price"] < (df_prices.at[current_id, "open_price"] * losscut_rate):
                 df_hold_stock.at[ticker_symbol, "losscut_price"] = df_prices.at[current_id, "open_price"] * losscut_rate
 
         # buy signal
@@ -393,38 +348,39 @@ def execute_2():
                 df_test_trade = df_test_trade.dropna()
                 last_assets = df_test_trade["assets"].values[-1]
 
-                if last_assets > 10000000:
+                if last_assets > 20000000 and df_prices.at[current_id-3, "sma_80"] < df_prices.at[current_id-1, "sma_80"]:
                     df_buy_signal.at[ticker_symbol, "last_assets"] = last_assets
                     df_buy_signal.at[ticker_symbol, "open_price"] = df_prices.at[current_id, "open_price"]
 
         # 資産が高い銘柄順に、資金管理を行いつつ株を購入する
-        base_funds = funds
-        for ticker_symbol in df_hold_stock.index:
-            base_funds += df_hold_stock.at[ticker_symbol, "buy_price"] * df_hold_stock.at[ticker_symbol, "buy_stocks"]
+        if len(df_buy_signal) > 0:
+            base_funds = funds
+            for ticker_symbol in df_hold_stock.index:
+                base_funds += df_hold_stock.at[ticker_symbol, "buy_price"] * df_hold_stock.at[ticker_symbol, "buy_stocks"]
 
-        for ticker_symbol in df_buy_signal.sort_values("last_assets", ascending=False).index:
-            buy_price = df_buy_signal.at[ticker_symbol, "open_price"]
-            buy_stocks = (base_funds * available_rate) // (buy_price * buy_stocks_unit) * buy_stocks_unit
-            if (base_funds * total_available_rate) > (funds - buy_price * buy_stocks):
-                buy_stocks = 0
+            for ticker_symbol in df_buy_signal.sort_values("last_assets", ascending=False).index:
+                buy_price = df_buy_signal.at[ticker_symbol, "open_price"]
+                buy_stocks = (base_funds * available_rate) // (buy_price * buy_stocks_unit) * buy_stocks_unit
+                if (base_funds * total_available_rate) > (funds - buy_price * buy_stocks):
+                    buy_stocks = 0
 
-            action_id = len(df_action)
-            df_action.at[action_id, "date"] = date
-            df_action.at[action_id, "ticker_symbol"] = ticker_symbol
-            df_action.at[action_id, "action"] = "buy"
-            df_action.at[action_id, "price"] = buy_price
-            df_action.at[action_id, "stocks"] = buy_stocks
+                action_id = len(df_action)
+                df_action.at[action_id, "date"] = date
+                df_action.at[action_id, "ticker_symbol"] = ticker_symbol
+                df_action.at[action_id, "action"] = "buy"
+                df_action.at[action_id, "price"] = buy_price
+                df_action.at[action_id, "stocks"] = buy_stocks
 
-            if buy_stocks > 0:
-                df_hold_stock.at[ticker_symbol, "date"] = date
-                df_hold_stock.at[ticker_symbol, "ticker_symbol"] = ticker_symbol
-                df_hold_stock.at[ticker_symbol, "buy_price"] = buy_price
-                df_hold_stock.at[ticker_symbol, "buy_stocks"] = buy_stocks
-                df_hold_stock.at[ticker_symbol, "losscut_price"] = buy_price * losscut_rate
+                if buy_stocks > 0:
+                    df_hold_stock.at[ticker_symbol, "date"] = date
+                    df_hold_stock.at[ticker_symbol, "ticker_symbol"] = ticker_symbol
+                    df_hold_stock.at[ticker_symbol, "buy_price"] = buy_price
+                    df_hold_stock.at[ticker_symbol, "buy_stocks"] = buy_stocks
+                    df_hold_stock.at[ticker_symbol, "losscut_price"] = buy_price * losscut_rate
 
-                funds -= buy_price * buy_stocks
+                    funds -= buy_price * buy_stocks
 
-            print(f"{ticker_symbol}: buy")
+                print(f"{ticker_symbol}: buy")
 
         # turn end
         result_id = len(df_result)
