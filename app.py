@@ -22,6 +22,7 @@ from investment_stocks_predict_trend import backtest_1
 from investment_stocks_predict_trend import backtest_2
 from investment_stocks_predict_trend import backtest_3
 from investment_stocks_predict_trend import preprocess
+from investment_stocks_predict_trend import simulate_trade_2
 
 
 if __name__ == "__main__":
@@ -117,5 +118,7 @@ if __name__ == "__main__":
         backtest_3.report_2()
     elif args.subcommand == "backtest_3.train_profit_rate":
         backtest_3.train_profit_rate()
+    elif args.subcommand == "simulate_trade_2":
+        simulate_trade_2.execute()
     else:
         raise Exception("unknown subcommand: " + args.subcommand)
