@@ -1,42 +1,20 @@
-from pprint import pprint
 import pandas as pd
 from sklearn import ensemble, metrics, model_selection
-import joblib
-
-
-def execute():
-    df_companies = pd.read_csv("local/predict_3/companies.csv", index_col=0)
-    clf = joblib.load("local/predict_3/random_forest_classifier.1301.joblib")
-    df_result = pd.DataFrame()
-
-    for ticker_symbol in df_companies.index:
-        print(f"ticker_symbol={ticker_symbol}")
-
-        if ticker_symbol == 1491 or ticker_symbol == 2654:
-            print("skip")
-            continue
-
-        df_input = pd.read_csv(f"local/predict_3/input.{ticker_symbol}.csv", index_col=0)
-
-        x, y = x_y_split(df_input)
-        ac_score = model_score(clf, x, y)
-
-        df_result.at[ticker_symbol, "ac_score"] = ac_score
-
-        print(df_result.loc[ticker_symbol])
-
-        df_result.to_csv("local/predict_3/result_tmp.csv")
+# import joblib
 
 
 def preprocess():
-    df_companies = pd.read_csv("local/stock_prices_preprocessed/companies.csv", index_col=0)
+    input_base_path = "local/stock_prices_preprocessed"
+    output_base_path = "local/predict_3"
+
+    df_companies = pd.read_csv(f"{input_base_path}/companies.csv", index_col=0)
     df_companies = df_companies.query("data_size > 2500")
-    df_companies.to_csv("local/predict_3/companies.csv")
+    df_companies.to_csv(f"{output_base_path}/companies.csv")
 
     for ticker_symbol in df_companies.index:
         print(ticker_symbol)
 
-        df_prices_preprocessed = pd.read_csv(f"local/stock_prices_preprocessed/stock_prices.{ticker_symbol}.csv", index_col=0)
+        df_prices_preprocessed = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
         df_prices_simulate_trade_2 = pd.read_csv(f"local/simulate_trade_2/result.{ticker_symbol}.csv", index_col=0)
 
         df_prices = pd.DataFrame()
@@ -50,12 +28,7 @@ def preprocess():
         df_prices["sma_40_change"] = df_prices_preprocessed["sma_40"].pct_change()
         df_prices["sma_80_change"] = df_prices_preprocessed["sma_80"].pct_change()
         df_prices["profit_rate"] = df_prices_simulate_trade_2["profit_rate"]
-
-        for id in df_prices.index:
-            if df_prices_simulate_trade_2.at[id, "profit_rate"] > 1.0:
-                df_prices.at[id, "profit_flag"] = 1
-            else:
-                df_prices.at[id, "profit_flag"] = 0
+        df_prices["profit_flag"] = df_prices_simulate_trade_2["profit_rate"].apply(lambda r: 1 if r > 1.0 else 0)
 
         df_prices = df_prices.dropna()
         df_prices.to_csv(f"local/predict_3/input.{ticker_symbol}.csv")
@@ -70,7 +43,7 @@ def x_y_split(df_prices_preprocessed):
 
 def train():
     df_companies = pd.read_csv("local/predict_3/companies.csv", index_col=0)
-    df_result = pd.DataFrame()
+    df_result = df_companies[["name", "data_size"]].copy()
 
     for ticker_symbol in df_companies.index:
         print(f"ticker_symbol={ticker_symbol}")
@@ -88,9 +61,10 @@ def train():
             x_test, y_test = x_y_split(df_test)
 
             clf_best = model_fit(x_train, y_train)
-            joblib.dump(clf_best, f"local/predict_3/random_forest_classifier.{ticker_symbol}.joblib", compress=9)
+            # joblib.dump(clf_best, f"local/predict_3/random_forest_classifier.{ticker_symbol}.joblib", compress=9)
 
-            clf = joblib.load(f"local/predict_3/random_forest_classifier.{ticker_symbol}.joblib")
+            # clf = joblib.load(f"local/predict_3/random_forest_classifier.{ticker_symbol}.joblib")
+            clf = clf_best
             df_result.at[ticker_symbol, "params"] = clf.get_params().__str__()
 
             ac_score = model_score(clf, x_test, y_test)
@@ -112,19 +86,10 @@ def train():
 
 
 def model_fit(x_train, y_train, experiment=None):
-    # parameters = {
-    #    "n_estimators": [10, 100, 200],
-    #    "criterion": ["gini", "entropy"],
-    #    "max_depth": [5, 10, 20, 50, 100],
-    #    "random_state": [1],
-    #    "class_weight": ["balanced"]
-    # }
     parameters = {
-        "n_estimators": [200],
-        "criterion": ["entropy"],
-        "max_depth": [50],
-        "random_state": [1],
-        "class_weight": ["balanced"]
+        "n_estimators": [10, 100, 200, 500, 1000],
+        "max_features": [1, "auto", None],
+        "max_depth": [1, 5, 10, 20, 50, None]
     }
 
     if experiment is not None:
@@ -132,7 +97,8 @@ def model_fit(x_train, y_train, experiment=None):
 
     clf = model_selection.GridSearchCV(ensemble.RandomForestClassifier(),
                                        parameters,
-                                       n_jobs=-1)
+                                       n_jobs=-1,
+                                       cv=5)
 
     clf.fit(x_train, y_train)
 
