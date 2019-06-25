@@ -39,8 +39,8 @@ def preprocess():
 
 
 def x_y_split(df_prices_preprocessed):
-    x = df_prices_preprocessed.drop("profit_rate", axis=1).drop("profit_flag", axis=1).values
-    y = df_prices_preprocessed["profit_flag"].values
+    x = df_prices_preprocessed.drop("profit_rate", axis=1).values
+    y = df_prices_preprocessed["profit_rate"].values
 
     return x, y
 
@@ -73,18 +73,18 @@ def train():
             clf = clf_best
             df_result.at[ticker_symbol, "params"] = clf.get_params().__str__()
 
-            score = clf.score(x_test, y_test)
-            print(f"score={score}")
-            df_result.at[ticker_symbol, "score"] = score
+            ac_score = model_score(clf, x_test, y_test)
+            print(f"ac_score={ac_score}")
+            df_result.at[ticker_symbol, "ac_score"] = ac_score
 
-            df_test_2 = df_test.query("profit_rate>1.0")
+            df_test_2 = df_test.copy()
             print(f"df_test_2 len={len(df_test_2)}")
 
             x_test_2, y_test_2 = x_y_split(df_test_2)
 
-            score_2 = clf.score(x_test_2, y_test_2)
-            print(f"score_2={score_2}")
-            df_result.at[ticker_symbol, "score_2"] = score_2
+            ac_score_2 = model_score(clf, x_test_2, y_test_2)
+            print(f"ac_score_2={ac_score_2}")
+            df_result.at[ticker_symbol, "ac_score_2"] = ac_score_2
 
             df_result.to_csv(f"{base_path}/result.csv")
         except Exception as err:
@@ -101,7 +101,8 @@ def model_fit(x_train, y_train, experiment=None):
 
     clf = model_selection.GridSearchCV(Lasso(),
                                        parameters,
-                                       n_jobs=-1)
+                                       n_jobs=-1,
+                                       cv=5)
 
     clf.fit(x_train, y_train)
 
@@ -113,3 +114,17 @@ def model_fit(x_train, y_train, experiment=None):
     clf_best = clf.best_estimator_
 
     return clf_best
+
+
+def model_score(clf, x, y):
+    y_pred = clf.predict(x)
+
+    count = 0.0
+
+    for i in range(len(y)):
+        if (y[i] >= 1.0 and y_pred[i] >= 1.0) or (y[i] < 1.0 and y_pred[i] < 1.0):
+            count += 1.0
+
+    ac_score = count / len(y)
+
+    return ac_score
