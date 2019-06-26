@@ -1,19 +1,19 @@
+import numpy as np
 import pandas as pd
-from sklearn import model_selection
-from sklearn.linear_model import Lasso
-import sklearn.preprocessing as sp
+from sklearn import metrics, model_selection
+from sklearn.svm import SVC
 #import joblib
 
 
 def x_y_split(df_prices_preprocessed):
     x = df_prices_preprocessed.drop("date", axis=1).drop("profit_rate", axis=1).drop("profit_flag", axis=1).values
-    y = df_prices_preprocessed["profit_rate"].values
+    y = df_prices_preprocessed["profit_flag"].values
 
     return x, y
 
 
 def train():
-    base_path = "local/predict_4"
+    base_path = "local/predict_5"
 
     df_companies = pd.read_csv(f"{base_path}/companies.csv", index_col=0)
     df_result = pd.DataFrame()
@@ -40,36 +40,31 @@ def train():
             clf = clf_best
             df_result.at[ticker_symbol, "params"] = clf.get_params().__str__()
 
-            ac_score = model_score(clf, x_test, y_test)
-            print(f"ac_score={ac_score}")
-            df_result.at[ticker_symbol, "ac_score"] = ac_score
-
-            df_test_2 = df_test.query("profit_rate>1.0")
-            print(f"df_test_2 len={len(df_test_2)}")
-
-            x_test_2, y_test_2 = x_y_split(df_test_2)
-
-            ac_score_2 = model_score(clf, x_test_2, y_test_2)
-            print(f"ac_score_2={ac_score_2}")
-            df_result.at[ticker_symbol, "ac_score_2"] = ac_score_2
-
-            df_result.to_csv(f"{base_path}/result.csv")
+            model_score(clf, x_test, y_test, df_result, ticker_symbol)
         except Exception as err:
             print(err)
+            df_result.at[ticker_symbol, "error"] = err.__str__()
+
+        print(df_result.loc[ticker_symbol])
+        df_result.to_csv(f"{base_path}/result.csv")
 
 
 def model_fit(x_train, y_train, experiment=None):
+    return SVC().fit(x_train, y_train)
+
     parameters = {
-        "alpha": [0.1, 0.5, 1.0, 10.0, 100.0]
+        "C": [0.001, 0.01, 0.1, 1.0, 10.0, 100.0],
+        "gamma": [0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
     }
 
     if experiment is not None:
         experiment.log_parameters(parameters)
 
-    clf = model_selection.GridSearchCV(Lasso(),
-                                       parameters,
-                                       n_jobs=-1,
-                                       cv=5)
+    clf = model_selection.GridSearchCV(
+        SVC(),
+        parameters,
+        n_jobs=-1,
+        cv=5)
 
     clf.fit(x_train, y_train)
 
@@ -83,15 +78,24 @@ def model_fit(x_train, y_train, experiment=None):
     return clf_best
 
 
-def model_score(clf, x, y):
+def model_score(clf, x, y, df_result, result_id):
+    totals = {}
+    counts = {}
+
+    labels = np.unique(y)
+
+    for label in labels:
+        totals[label] = 0
+        counts[label] = 0
+
     y_pred = clf.predict(x)
 
-    count = 0.0
-
     for i in range(len(y)):
-        if (y[i] >= 1.0 and y_pred[i] >= 1.0) or (y[i] < 1.0 and y_pred[i] < 1.0):
-            count += 1.0
+        totals[y[i]] += 1
+        if y[i] == y_pred[i]:
+            counts[y[i]] += 1
 
-    ac_score = count / len(y)
-
-    return ac_score
+    for label in labels:
+        df_result.at[result_id, f"score_{label}_total"] = totals[label]
+        df_result.at[result_id, f"score_{label}_count"] = counts[label]
+        df_result.at[result_id, f"score_{label}"] = counts[label] / totals[label]

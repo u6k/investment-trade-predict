@@ -20,6 +20,8 @@ from investment_stocks_predict_trend import predict_1
 from investment_stocks_predict_trend import predict_2
 from investment_stocks_predict_trend import predict_3
 from investment_stocks_predict_trend import predict_4
+from investment_stocks_predict_trend import predict_5
+from investment_stocks_predict_trend import predict_4_1
 from investment_stocks_predict_trend import backtest_1
 from investment_stocks_predict_trend import backtest_2
 from investment_stocks_predict_trend import backtest_3
@@ -107,6 +109,10 @@ if __name__ == "__main__":
         predict_4.preprocess()
     elif args.subcommand == "predict_4.train":
         predict_4.train()
+    elif args.subcommand == "predict_4_1.preprocess":
+        predict_4_1.preprocess()
+    elif args.subcommand == "predict_5.train":
+        predict_5.train()
     elif args.subcommand == "preprocess":
         preprocess.preprocess()
     elif args.subcommand == "backtest_1":

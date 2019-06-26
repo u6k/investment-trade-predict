@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from sklearn import ensemble, metrics, model_selection
 # import joblib
@@ -20,13 +21,14 @@ def preprocess():
         df_prices = pd.DataFrame()
         df_prices["id"] = df_prices_preprocessed.index
         df_prices = df_prices.set_index("id")
-        df_prices["volume_change"] = df_prices_preprocessed["volume"].pct_change()
-        df_prices["adjusted_close_price_change"] = df_prices_preprocessed["adjusted_close_price"].pct_change()
-        df_prices["sma_5_change"] = df_prices_preprocessed["sma_5"].pct_change()
-        df_prices["sma_10_change"] = df_prices_preprocessed["sma_10"].pct_change()
-        df_prices["sma_20_change"] = df_prices_preprocessed["sma_20"].pct_change()
-        df_prices["sma_40_change"] = df_prices_preprocessed["sma_40"].pct_change()
-        df_prices["sma_80_change"] = df_prices_preprocessed["sma_80"].pct_change()
+        df_prices["date"] = df_prices_preprocessed["date"]
+        df_prices["volume_change"] = df_prices_preprocessed["volume"] / df_prices_preprocessed["volume"].shift(1)
+        df_prices["adjusted_close_price_change"] = df_prices_preprocessed["adjusted_close_price"] / df_prices_preprocessed["adjusted_close_price"].shift(1)
+        df_prices["sma_5_change"] = df_prices_preprocessed["sma_5"] / df_prices_preprocessed["sma_5"].shift(1)
+        df_prices["sma_10_change"] = df_prices_preprocessed["sma_10"] / df_prices_preprocessed["sma_10"].shift(1)
+        df_prices["sma_20_change"] = df_prices_preprocessed["sma_20"] / df_prices_preprocessed["sma_20"].shift(1)
+        df_prices["sma_40_change"] = df_prices_preprocessed["sma_40"] / df_prices_preprocessed["sma_40"].shift(1)
+        df_prices["sma_80_change"] = df_prices_preprocessed["sma_80"] / df_prices_preprocessed["sma_80"].shift(1)
         df_prices["profit_rate"] = df_prices_simulate_trade_2["profit_rate"]
         df_prices["profit_flag"] = df_prices_simulate_trade_2["profit_rate"].apply(lambda r: 1 if r > 1.0 else 0)
 
@@ -35,24 +37,26 @@ def preprocess():
 
 
 def x_y_split(df_prices_preprocessed):
-    x = df_prices_preprocessed.drop("profit_rate", axis=1).drop("profit_flag", axis=1).values
+    x = df_prices_preprocessed.drop("date", axis=1).drop("profit_rate", axis=1).drop("profit_flag", axis=1).values
     y = df_prices_preprocessed["profit_flag"].values
 
     return x, y
 
 
 def train():
-    df_companies = pd.read_csv("local/predict_3/companies.csv", index_col=0)
+    base_path = "local/predict_3"
+
+    df_companies = pd.read_csv(f"{base_path}/companies.csv", index_col=0)
     df_result = df_companies[["name", "data_size"]].copy()
 
     for ticker_symbol in df_companies.index:
         print(f"ticker_symbol={ticker_symbol}")
 
         try:
-            df_input = pd.read_csv(f"local/predict_3/input.{ticker_symbol}.csv", index_col=0)
+            df_input = pd.read_csv(f"{base_path}/input.{ticker_symbol}.csv", index_col=0)
 
-            df_train = df_input[:int(len(df_input)/4*3)]
-            df_test = df_input[len(df_train):]
+            df_train = df_input.query("'2008-01-01' <= date <= '2017-12-31'")
+            df_test = df_input.query("'2018-01-01' <= date <= '2018-12-31'")
             print(f"df_input len={len(df_input)}")
             print(f"df_train len={len(df_train)}")
             print(f"df_test len={len(df_test)}")
@@ -67,29 +71,25 @@ def train():
             clf = clf_best
             df_result.at[ticker_symbol, "params"] = clf.get_params().__str__()
 
-            ac_score = model_score(clf, x_test, y_test)
-            print(f"ac_score={ac_score}")
-            df_result.at[ticker_symbol, "ac_score"] = ac_score
-
-            df_test_2 = df_test.query("profit_rate>1.0")
-            print(f"df_test_2 len={len(df_test_2)}")
-
-            x_test_2, y_test_2 = x_y_split(df_test_2)
-
-            ac_score_2 = model_score(clf, x_test_2, y_test_2)
-            print(f"ac_score_2={ac_score_2}")
-            df_result.at[ticker_symbol, "ac_score_2"] = ac_score_2
-
-            df_result.to_csv("local/predict_3/result.csv")
+            model_score(clf, x_test, y_test, df_result, ticker_symbol)
         except Exception as err:
             print(err)
+            df_result.at[ticker_symbol, "error"] = err.__str__()
+
+        print(df_result.loc[ticker_symbol])
+        df_result.to_csv(f"{base_path}/result.csv")
 
 
 def model_fit(x_train, y_train, experiment=None):
+    return ensemble.RandomForestClassifier(n_estimators=200).fit(x_train, y_train)
+
+    # parameters = {
+    #    "n_estimators": [10, 100, 200, 500, 1000],
+    #    "max_features": [1, "auto", None],
+    #    "max_depth": [1, 5, 10, 20, 50, None]
+    # }
     parameters = {
-        "n_estimators": [10, 100, 200, 500, 1000],
-        "max_features": [1, "auto", None],
-        "max_depth": [1, 5, 10, 20, 50, None]
+        "n_estimators": [200],
     }
 
     if experiment is not None:
@@ -112,11 +112,24 @@ def model_fit(x_train, y_train, experiment=None):
     return clf_best
 
 
-def model_score(clf_best, x_test, y_test, experiment=None):
-    result = clf_best.predict(x_test)
-    ac_score = metrics.accuracy_score(y_test, result)
+def model_score(clf, x, y, df_result, result_id):
+    totals = {}
+    counts = {}
 
-    if experiment is not None:
-        experiment.log_metric("accuracy_score", ac_score)
+    labels = np.unique(y)
 
-    return ac_score
+    for label in labels:
+        totals[label] = 0
+        counts[label] = 0
+
+    y_pred = clf.predict(x)
+
+    for i in range(len(y)):
+        totals[y[i]] += 1
+        if y[i] == y_pred[i]:
+            counts[y[i]] += 1
+
+    for label in labels:
+        df_result.at[result_id, f"score_{label}_total"] = totals[label]
+        df_result.at[result_id, f"score_{label}_count"] = counts[label]
+        df_result.at[result_id, f"score_{label}"] = counts[label] / totals[label]
