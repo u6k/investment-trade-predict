@@ -48,6 +48,21 @@ def preprocess():
 
             df_prices[f"rsi_{rsi_len}"] = rsi
 
+        # Stochastic
+        for stochastic_len in [5, 9, 20, 25, 40]:
+            slen = stochastic_len
+            close = df_prices["close_price"]
+            low = df_prices["low_price"]
+            high = df_prices["high_price"]
+
+            stochastic_k = ((close - low.rolling(window=slen, center=False).min()) / (high.rolling(window=slen, center=False).max() - low.rolling(window=slen, center=False).min())) * 100
+            stochastic_d = stochastic_k.rolling(window=3, center=False).mean()
+            stochastic_sd = stochastic_d.rolling(window=3, center=False).mean()
+
+            df_prices[f"stochastic_k_{stochastic_len}"] = stochastic_k
+            df_prices[f"stochastic_d_{stochastic_len}"] = stochastic_d
+            df_prices[f"stochastic_sd_{stochastic_len}"] = stochastic_sd
+
         # Summary
         df_companies.at[ticker_symbol, "data_size"] = len(df_prices)
         for year in range(2008, 2019):
