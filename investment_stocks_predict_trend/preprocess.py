@@ -35,6 +35,19 @@ def preprocess():
         for roc_len in [5, 10, 20, 40, 80]:
             df_prices[f"roc_{roc_len}"] = df_prices["adjusted_close_price"].pct_change(roc_len-1)
 
+        # RSI
+        for rsi_len in [5, 10, 14, 20, 40]:
+            diff = df_prices["adjusted_close_price"].diff()
+            diff = diff[1:]
+            up, down = diff.copy(), diff.copy()
+            up[up < 0] = 0
+            down[down > 0] = 0
+            up_sma = up.rolling(window=rsi_len, center=False).mean()
+            down_sma = down.rolling(window=rsi_len, center=False).mean()
+            rsi = up_sma / (up_sma - down_sma) * 100.0
+
+            df_prices[f"rsi_{rsi_len}"] = rsi
+
         # Summary
         df_companies.at[ticker_symbol, "data_size"] = len(df_prices)
         for year in range(2008, 2019):
