@@ -1,8 +1,6 @@
 import pandas as pd
 from sklearn import model_selection
 from sklearn.linear_model import Lasso
-import sklearn.preprocessing as sp
-#import joblib
 
 
 def x_y_split(df_prices_preprocessed):

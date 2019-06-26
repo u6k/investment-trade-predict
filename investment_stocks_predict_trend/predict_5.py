@@ -1,8 +1,7 @@
 import numpy as np
 import pandas as pd
-from sklearn import metrics, model_selection
+from sklearn import model_selection
 from sklearn.svm import SVC
-#import joblib
 
 
 def x_y_split(df_prices_preprocessed):
