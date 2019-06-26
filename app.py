@@ -15,10 +15,18 @@ from investment_stocks_predict_trend import agent_8
 from investment_stocks_predict_trend import agent_9
 from investment_stocks_predict_trend import agent_10
 from investment_stocks_predict_trend import agent_11
+from investment_stocks_predict_trend import agent_12
 from investment_stocks_predict_trend import predict_1
 from investment_stocks_predict_trend import predict_2
+from investment_stocks_predict_trend import predict_3
+from investment_stocks_predict_trend import predict_4
+from investment_stocks_predict_trend import predict_5
+from investment_stocks_predict_trend import predict_4_1
 from investment_stocks_predict_trend import backtest_1
 from investment_stocks_predict_trend import backtest_2
+from investment_stocks_predict_trend import backtest_3
+from investment_stocks_predict_trend import preprocess
+from investment_stocks_predict_trend import simulate_trade_2
 
 
 if __name__ == "__main__":
@@ -81,19 +89,52 @@ if __name__ == "__main__":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_11")
         agent_11.execute(experiment)
         experiment.end()
-    elif args.subcommand == "predict_1":
-        experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="predict_1")
-        predict_1.execute(experiment)
+    elif args.subcommand == "agent_12":
+        experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_12")
+        agent_12.execute(experiment)
         experiment.end()
+    elif args.subcommand == "predict_1":
+        predict_1.execute()
     elif args.subcommand == "predict_2":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="predict_2")
         predict_2.execute(experiment)
         experiment.end()
+    elif args.subcommand == "predict_3":
+        predict_3.execute()
+    elif args.subcommand == "predict_3.preprocess":
+        predict_3.preprocess()
+    elif args.subcommand == "predict_3.train":
+        predict_3.train()
+    elif args.subcommand == "predict_4.preprocess":
+        predict_4.preprocess()
+    elif args.subcommand == "predict_4.train":
+        predict_4.train()
+    elif args.subcommand == "predict_4_1.preprocess":
+        predict_4_1.preprocess()
+    elif args.subcommand == "predict_5.train":
+        predict_5.train()
+    elif args.subcommand == "preprocess":
+        preprocess.preprocess()
     elif args.subcommand == "backtest_1":
         backtest_1.execute()
     elif args.subcommand == "backtest_1.single":
         backtest_1.execute_single()
     elif args.subcommand == "backtest_2":
         backtest_2.execute()
+    elif args.subcommand == "backtest_3":
+        backtest_3.execute()
+    elif args.subcommand == "backtest_3.2":
+        backtest_3.execute_2()
+    elif args.subcommand == "backtest_3.simulate_trade":
+        df_stocks = backtest_3.simulate_trade("1301", "2017-07-01", "2018-06-30", 5, 20)
+        df_stocks.to_csv("local/test_3/result.1301.2018.csv")
+    elif args.subcommand == "backtest_3.report":
+        backtest_3.report()
+    elif args.subcommand == "backtest_3.report_2":
+        backtest_3.report_2()
+    elif args.subcommand == "backtest_3.train_profit_rate":
+        backtest_3.train_profit_rate()
+    elif args.subcommand == "simulate_trade_2":
+        simulate_trade_2.execute()
     else:
         raise Exception("unknown subcommand: " + args.subcommand)

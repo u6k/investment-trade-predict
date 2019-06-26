@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2019-06-26
+
+### Added
+
+- [#7137: 終値だけで取引したらどうなるか？](https://redmine.u6k.me/issues/7137)
+- [#7155: 移動平均を利用した売買アルゴリズムを構築する](https://redmine.u6k.me/issues/7155)
+
 ## [0.8.0]
 
 ### Added
