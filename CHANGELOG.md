@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - [#7157: モメンタムで売買シミュレーションを行う](https://redmine.u6k.me/issues/7157)
+- [#7158: ROC(変化率)で売買シミュレーションを行う](https://redmine.u6k.me/issues/7158)
 
 ## [0.9.0] - 2019-06-26
 

@@ -31,6 +31,10 @@ def preprocess():
         for momentum_len in [5, 10, 20, 40, 80]:
             df_prices[f"momentum_{momentum_len}"] = df_prices["adjusted_close_price"] - df_prices["adjusted_close_price"].shift(momentum_len-1)
 
+        # ROC (Rate Of Change)
+        for roc_len in [5, 10, 20, 40, 80]:
+            df_prices[f"roc_{roc_len}"] = df_prices["adjusted_close_price"].pct_change(roc_len-1)
+
         # Summary
         df_companies.at[ticker_symbol, "data_size"] = len(df_prices)
         for year in range(2008, 2019):
