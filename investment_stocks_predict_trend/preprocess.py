@@ -50,12 +50,13 @@ def preprocess():
 
         # Stochastic
         for stochastic_len in [5, 9, 20, 25, 40]:
-            slen = stochastic_len
             close = df_prices["close_price"]
             low = df_prices["low_price"]
+            low_min = low.rolling(window=stochastic_len, center=False).min()
             high = df_prices["high_price"]
+            high_max = high.rolling(window=stochastic_len, center=False).max()
 
-            stochastic_k = ((close - low.rolling(window=slen, center=False).min()) / (high.rolling(window=slen, center=False).max() - low.rolling(window=slen, center=False).min())) * 100
+            stochastic_k = ((close - low_min) / (high_max - low_min)) * 100
             stochastic_d = stochastic_k.rolling(window=3, center=False).mean()
             stochastic_sd = stochastic_d.rolling(window=3, center=False).mean()
 
