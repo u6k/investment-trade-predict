@@ -1,17 +1,13 @@
 import pandas as pd
 import numpy as np
-import os
 
 
 def preprocess():
     input_base_path = "local/stock_prices"
-    input_2_base_path = "local/simulate_trade_2"
     output_base_path = "local/stock_prices_preprocessed"
 
-    os.makedirs(output_base_path, exist_ok=True)
-
-    df_companies = pd.read_csv(f"{input_base_path}/companies.csv", index_col=0)
-    df_companies = df_companies.sort_values("ticker_symbol") \
+    df_companies = pd.read_csv(f"{input_base_path}/companies.csv", index_col=0) \
+        .sort_values("ticker_symbol") \
         .drop_duplicates() \
         .set_index("ticker_symbol")
 
@@ -26,7 +22,7 @@ def preprocess():
             df_prices = df_prices.set_index("id")
 
             # Profit rate
-            df_simulated = pd.read_csv(f"{input_2_base_path}/result.{ticker_symbol}.csv", index_col=0)
+            df_simulated = pd.read_csv(f"{input_base_path}/simulate_trade_2.{ticker_symbol}.csv", index_col=0)
 
             df_prices["end_id"] = df_simulated["end_id"]
             df_prices["sell_price"] = df_simulated["sell_price"]
@@ -73,11 +69,6 @@ def preprocess():
                 df_prices[f"stochastic_k_{stochastic_len}"] = stochastic_k
                 df_prices[f"stochastic_d_{stochastic_len}"] = stochastic_d
                 df_prices[f"stochastic_sd_{stochastic_len}"] = stochastic_sd
-
-            # Summary
-            df_companies.at[ticker_symbol, "data_size"] = len(df_prices)
-            for year in range(2008, 2019):
-                df_companies.at[ticker_symbol, f"volume_{year}"] = df_prices.query(f"'{year}-01-01' <= date <= '{year}-12-31'")["volume"].sum()
 
             # Save
             df_prices.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
