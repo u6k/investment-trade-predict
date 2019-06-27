@@ -12,16 +12,17 @@ def x_y_split(df_prices_preprocessed):
 
 
 def train():
-    base_path = "local/predict_5"
+    input_base_path = "local/predict_preprocessed"
+    output_base_path = "local/predict_5"
 
-    df_companies = pd.read_csv(f"{base_path}/companies.csv", index_col=0)
+    df_companies = pd.read_csv(f"{input_base_path}/companies.csv", index_col=0)
     df_result = pd.DataFrame()
 
     for ticker_symbol in df_companies.index:
         print(f"ticker_symbol={ticker_symbol}")
 
         try:
-            df_input = pd.read_csv(f"{base_path}/input.{ticker_symbol}.csv", index_col=0)
+            df_input = pd.read_csv(f"{input_base_path}/input.{ticker_symbol}.csv", index_col=0)
 
             df_train = df_input.query("'2008-01-01' <= date <= '2017-12-31'")
             df_test = df_input.query("'2018-01-01' <= date <= '2018-12-31'")
@@ -45,7 +46,7 @@ def train():
             df_result.at[ticker_symbol, "error"] = err.__str__()
 
         print(df_result.loc[ticker_symbol])
-        df_result.to_csv(f"{base_path}/result.csv")
+        df_result.to_csv(f"{output_base_path}/result.csv")
 
 
 def model_fit(x_train, y_train, experiment=None):
