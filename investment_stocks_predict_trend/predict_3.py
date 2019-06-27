@@ -103,10 +103,10 @@ def preprocess():
             test_start_id = df_prices.query("'2018-01-01' <= date < '2019-01-01'").index[0]
             test_end_id = df_prices.query("'2018-01-01' <= date < '2019-01-01'").index[-1]
 
-            df_prices_train_data = df_prices[train_start_id-1: train_end_id-1].drop(["date","profit_rate","profit_rate"], axis=1)
-            df_prices_train_target = df_prices[train_start_id: train_end_id][["profit_rate","profit_flag"]]
-            df_prices_test_data = df_prices[test_start_id-1: test_end_id-1].drop(["date","profit_rate","profit_rate"], axis=1)
-            df_prices_test_target = df_prices[test_start_id: test_end_id][["profit_rate","profit_flag"]]
+            df_prices_train_data = df_prices[train_start_id-1: train_end_id-1].drop(["date", "profit_rate", "profit_rate"], axis=1)
+            df_prices_train_target = df_prices[train_start_id: train_end_id][["profit_rate", "profit_flag"]]
+            df_prices_test_data = df_prices[test_start_id-1: test_end_id-1].drop(["date", "profit_rate", "profit_rate"], axis=1)
+            df_prices_test_target = df_prices[test_start_id: test_end_id][["profit_rate", "profit_flag"]]
 
             # Save
             df_prices_train_data.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.train_data.csv")
