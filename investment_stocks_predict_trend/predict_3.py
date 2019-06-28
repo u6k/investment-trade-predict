@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn import ensemble, model_selection
 from sklearn.preprocessing import StandardScaler
+import os
 
 
 def preprocess():
@@ -18,7 +19,7 @@ def preprocess():
         try:
             df_prices_preprocessed = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-            if len(df_prices_preprocessed.query("'2008-01-01' > date")) == 0 or len(df_prices_preprocessed.query("date >= '2019-01-01'")) == 0:
+            if len(df_prices_preprocessed.query("'2013-01-01' > date")) == 0 or len(df_prices_preprocessed.query("date >= '2019-01-01'")) == 0:
                 print("skip: little data")
                 df_companies.at[ticker_symbol, "message"] = "skip: little data"
                 continue
@@ -98,15 +99,17 @@ def preprocess():
                     df_prices_preprocessed[f"stochastic_sd_{stochastic_len}"].values.reshape(-1, 1))
 
             # Split train and test
-            train_start_id = df_prices.query("'2008-01-01' <= date < '2018-01-01'").index[0]
-            train_end_id = df_prices.query("'2008-01-01' <= date < '2018-01-01'").index[-1]
+            df_prices = df_prices.dropna()
+
+            train_start_id = df_prices.query("'2013-01-01' <= date < '2018-01-01'").index[0]
+            train_end_id = df_prices.query("'2013-01-01' <= date < '2018-01-01'").index[-1]
             test_start_id = df_prices.query("'2018-01-01' <= date < '2019-01-01'").index[0]
             test_end_id = df_prices.query("'2018-01-01' <= date < '2019-01-01'").index[-1]
 
-            df_prices_train_data = df_prices[train_start_id-1: train_end_id-1].drop(["date", "profit_rate", "profit_rate"], axis=1)
-            df_prices_train_target = df_prices[train_start_id: train_end_id][["profit_rate", "profit_flag"]]
-            df_prices_test_data = df_prices[test_start_id-1: test_end_id-1].drop(["date", "profit_rate", "profit_rate"], axis=1)
-            df_prices_test_target = df_prices[test_start_id: test_end_id][["profit_rate", "profit_flag"]]
+            df_prices_train_data = df_prices.loc[train_start_id-1: train_end_id-1].drop(["date", "profit_rate", "profit_flag"], axis=1)
+            df_prices_train_target = df_prices.loc[train_start_id: train_end_id][["profit_rate", "profit_flag"]]
+            df_prices_test_data = df_prices.loc[test_start_id-1: test_end_id-1].drop(["date", "profit_rate", "profit_flag"], axis=1)
+            df_prices_test_target = df_prices.loc[test_start_id: test_end_id][["profit_rate", "profit_flag"]]
 
             # Save
             df_prices_train_data.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.train_data.csv")
@@ -127,10 +130,13 @@ def train():
     output_base_path = "local/predict_3"
 
     df_companies = pd.read_csv(f"{input_base_path}/companies.csv", index_col=0)
-    df_companies["message"] = "waiting"
 
-    for ticker_symbol in df_companies.index:
+    df_result = pd.DataFrame(columns=df_companies.columns)
+
+    for ticker_symbol in df_companies.query("message.isnull()").index:
         print(f"ticker_symbol={ticker_symbol}")
+
+        df_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
 
         try:
             df_prices_train_data = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.train_data.csv", index_col=0)
@@ -146,25 +152,23 @@ def train():
             clf = model_fit(x_train, y_train)
             joblib.dump(clf, f"{output_base_path}/random_forest_classifier.{ticker_symbol}.joblib", compress=9)
 
-            model_score(clf, x_test, y_test, df_companies, ticker_symbol)
-
-            df_companies.at[ticker_symbol, "message"] = ""
+            model_score(clf, x_test, y_test, df_result, ticker_symbol)
         except Exception as err:
             print(err)
-            df_companies.at[ticker_symbol, "message"] = err.__str__()
+            df_result.at[ticker_symbol, "message"] = err.__str__()
 
-        print(df_companies.loc[ticker_symbol])
-        df_companies.to_csv(f"{output_base_path}/companies.csv")
+        print(df_result.loc[ticker_symbol])
+        df_result.to_csv(f"{output_base_path}/result.csv")
 
 
 def model_fit(x_train, y_train, experiment=None):
     return ensemble.RandomForestClassifier(n_estimators=200).fit(x_train, y_train)
 
-    # parameters = {
-    #    "n_estimators": [10, 100, 200, 500, 1000],
-    #    "max_features": [1, "auto", None],
-    #    "max_depth": [1, 5, 10, 20, 50, None]
-    # }
+    parameters = {
+       "n_estimators": [10, 100, 200, 500, 1000],
+       "max_features": [1, "auto", None],
+       "max_depth": [1, 5, 10, 20, 50, None]
+    }
     parameters = {
         "n_estimators": [200],
     }
