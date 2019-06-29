@@ -16,7 +16,7 @@ from investment_stocks_predict_trend import agent_11
 from investment_stocks_predict_trend import agent_12
 from investment_stocks_predict_trend import predict_1
 from investment_stocks_predict_trend import predict_2
-from investment_stocks_predict_trend import predict_3
+from investment_stocks_predict_trend.predict_3 import PredictClassification_3
 from investment_stocks_predict_trend import predict_4
 from investment_stocks_predict_trend import predict_5
 from investment_stocks_predict_trend import backtest_1
@@ -94,7 +94,7 @@ if __name__ == "__main__":
         predict_2.execute(experiment)
         experiment.end()
     elif args.subcommand == "predict_3":
-        predict_3.execute()
+        PredictClassification_3().execute()
     elif args.subcommand == "predict_4.preprocess":
         predict_4.preprocess()
     elif args.subcommand == "predict_4.train":
