@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-def preprocess():
+def execute():
     input_base_path = "local/stock_prices"
     output_base_path = "local/stock_prices_preprocessed"
 
