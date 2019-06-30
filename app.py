@@ -22,6 +22,7 @@ from investment_stocks_predict_trend.predict_5 import PredictClassification_5
 from investment_stocks_predict_trend import backtest_1
 from investment_stocks_predict_trend import backtest_2
 from investment_stocks_predict_trend import backtest_3
+from investment_stocks_predict_trend import backtest_4
 from investment_stocks_predict_trend import preprocess_1
 from investment_stocks_predict_trend import preprocess_2
 from investment_stocks_predict_trend import simulate_trade_2
@@ -122,6 +123,8 @@ if __name__ == "__main__":
         backtest_3.report_2()
     elif args.subcommand == "backtest_3.train_profit_rate":
         backtest_3.train_profit_rate()
+    elif args.subcommand == "backtest_4":
+        backtest_4.execute()
     elif args.subcommand == "simulate_trade_2":
         simulate_trade_2.execute()
     else:
