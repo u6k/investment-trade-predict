@@ -2,8 +2,6 @@ import argparse
 import os
 from comet_ml import Experiment
 from investment_stocks_predict_trend import select_company
-from investment_stocks_predict_trend import random_forest_1
-from investment_stocks_predict_trend import random_forest_2
 from investment_stocks_predict_trend import agent_1
 from investment_stocks_predict_trend import agent_2
 from investment_stocks_predict_trend import agent_3
@@ -18,13 +16,14 @@ from investment_stocks_predict_trend import agent_11
 from investment_stocks_predict_trend import agent_12
 from investment_stocks_predict_trend import predict_1
 from investment_stocks_predict_trend import predict_2
-from investment_stocks_predict_trend import predict_3
-from investment_stocks_predict_trend import predict_4
-from investment_stocks_predict_trend import predict_5
+from investment_stocks_predict_trend.predict_3 import PredictClassification_3
+from investment_stocks_predict_trend.predict_4 import PredictRegression_4
+from investment_stocks_predict_trend.predict_5 import PredictClassification_5
 from investment_stocks_predict_trend import backtest_1
 from investment_stocks_predict_trend import backtest_2
 from investment_stocks_predict_trend import backtest_3
-from investment_stocks_predict_trend import preprocess
+from investment_stocks_predict_trend import preprocess_1
+from investment_stocks_predict_trend import preprocess_2
 from investment_stocks_predict_trend import simulate_trade_2
 
 
@@ -40,10 +39,6 @@ if __name__ == "__main__":
         select_company.analysis()
     elif args.subcommand == "select_company.analysis_2":
         select_company.analysis_2()
-    elif args.subcommand == "random_forest_1.scores":
-        random_forest_1.scores()
-    elif args.subcommand == "random_forest_2.scores":
-        random_forest_2.scores()
     elif args.subcommand == "agent_1":
         experiment = Experiment(api_key=os.environ["COMET_ML_API_KEY"], project_name="agent_1")
         agent_1.execute(experiment)
@@ -99,19 +94,15 @@ if __name__ == "__main__":
         predict_2.execute(experiment)
         experiment.end()
     elif args.subcommand == "predict_3":
-        predict_3.execute()
-    elif args.subcommand == "predict_3.preprocess":
-        predict_3.preprocess()
-    elif args.subcommand == "predict_3.train":
-        predict_3.train()
-    elif args.subcommand == "predict_4.preprocess":
-        predict_4.preprocess()
-    elif args.subcommand == "predict_4.train":
-        predict_4.train()
-    elif args.subcommand == "predict_5.train":
-        predict_5.train()
-    elif args.subcommand == "preprocess":
-        preprocess.preprocess()
+        PredictClassification_3().execute()
+    elif args.subcommand == "predict_4":
+        PredictRegression_4().execute()
+    elif args.subcommand == "predict_5":
+        PredictClassification_5().execute()
+    elif args.subcommand == "preprocess_1":
+        preprocess_1.execute()
+    elif args.subcommand == "preprocess_2":
+        preprocess_2.execute()
     elif args.subcommand == "backtest_1":
         backtest_1.execute()
     elif args.subcommand == "backtest_1.single":

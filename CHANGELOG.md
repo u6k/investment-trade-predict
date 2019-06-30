@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#7158: ROC(変化率)で売買シミュレーションを行う](https://redmine.u6k.me/issues/7158)
 - [#7159: RSI(相対力指数)で売買シミュレーションを行う](https://redmine.u6k.me/issues/7159)
 - [#7160: ストキャスティクスで売買シミュレーションを行う](https://redmine.u6k.me/issues/7160)
+- [#7183: predictの入力データ、ラベルデータが間違えている](https://redmine.u6k.me/issues/7183)
 
 ## [0.9.0] - 2019-06-26
 
