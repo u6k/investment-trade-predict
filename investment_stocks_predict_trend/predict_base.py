@@ -1,6 +1,7 @@
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.metrics import mean_squared_error, r2_score
 
 
 class PredictClassificationBase():
@@ -66,3 +67,11 @@ class PredictClassificationBase():
             df_result.at[result_id, f"score_{label}_total"] = totals[label]
             df_result.at[result_id, f"score_{label}_count"] = counts[label]
             df_result.at[result_id, f"score_{label}"] = counts[label] / totals[label]
+
+
+class PredictRegressionBase(PredictClassificationBase):
+    def model_score(self, clf, x, y, df_result, result_id):
+        y_pred = clf.predict(x)
+
+        df_result.at[result_id, "rmse"] = np.sqrt(mean_squared_error(y, y_pred))
+        df_result.at[result_id, "r2"] = r2_score(y, y_pred)
