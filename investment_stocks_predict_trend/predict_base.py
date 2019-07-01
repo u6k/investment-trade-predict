@@ -8,7 +8,7 @@ class PredictClassificationBase():
     def execute(self):
         raise Exception("Not implemented.")
 
-    def preprocess(self, df_train_data, df_test_data, df_train_target, df_test_target):
+    def preprocess(self, df_data_train, df_data_test, df_target_train, df_target_test):
         raise Exception("Not implemented.")
 
     def model_fit(self, x_train, y_train):
@@ -39,12 +39,12 @@ class PredictClassificationBase():
             df_result.to_csv(f"{output_base_path}/result.csv")
 
     def load_data(self, input_base_path, ticker_symbol):
-        df_train_data = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.train_data.csv", index_col=0)
-        df_test_data = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.test_data.csv", index_col=0)
-        df_train_target = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.train_target.csv", index_col=0)
-        df_test_target = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.test_target.csv", index_col=0)
+        df_data_train = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.data_train.csv", index_col=0)
+        df_data_test = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.data_test.csv", index_col=0)
+        df_target_train = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.target_train.csv", index_col=0)
+        df_target_test = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.target_test.csv", index_col=0)
 
-        return self.preprocess(df_train_data, df_test_data, df_train_target, df_test_target)
+        return self.preprocess(df_data_train, df_data_test, df_target_train, df_target_test)
 
     def model_score(self, clf, x, y, df_result, result_id):
         totals = {}

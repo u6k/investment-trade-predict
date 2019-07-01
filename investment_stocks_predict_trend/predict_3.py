@@ -9,11 +9,11 @@ class PredictClassification_3(PredictClassificationBase):
 
         self.train(input_base_path, output_base_path)
 
-    def preprocess(self, df_train_data, df_test_data, df_train_target, df_test_target):
-        x_train = df_train_data.values
-        x_test = df_test_data.values
-        y_train = df_train_target["profit_flag"].values
-        y_test = df_test_target["profit_flag"].values
+    def preprocess(self, df_data_train, df_data_test, df_target_train, df_target_test):
+        x_train = df_data_train.values
+        x_test = df_data_test.values
+        y_train = df_target_train["profit_flag"].values
+        y_test = df_target_test["profit_flag"].values
 
         return x_train, x_test, y_train, y_test
 
