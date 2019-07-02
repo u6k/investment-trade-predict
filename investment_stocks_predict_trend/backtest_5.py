@@ -3,10 +3,6 @@ import joblib
 import pandas as pd
 
 
-def execute():
-    backtest()
-
-
 def preprocess():
     input_base_path = "local/backtest_preprocessed"
     output_base_path = "local/backtest_5"
@@ -24,7 +20,7 @@ def preprocess():
             # Load data
             clf = joblib.load(f"{input_base_path}/model.{ticker_symbol}.joblib")
             df_prices = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
-            df_test_data = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.test_data.csv", index_col=0)
+            df_test_data = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.data_test.csv", index_col=0)
 
             x_test = []
             for index in df_prices.query(f"'{start_date}' <= date <= '{end_date}'").index:
@@ -60,7 +56,7 @@ def backtest():
     df_companies = pd.read_csv(f"{base_path}/companies.csv", index_col=0)
 
     df_prices_dic = {}
-    for ticker_symbol in df_companies.query("message.isnull() and score_0>0.6 and score_1>0.8 and score_1_total>30").index:
+    for ticker_symbol in df_companies.query("message.isnull() and score_0>0.6 and score_1>0.8 and score_1_total>50").index:
         print(f"load csv: {ticker_symbol}")
         df_prices_dic[ticker_symbol] = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.predicted.csv", index_col=0)
 
@@ -138,24 +134,24 @@ def backtest():
                 continue
 
             losscut_price = df_stocks.at[ticker_symbol, "losscut_price"]
-            open_price = df_prices_current["open_price"].values[0]
+            low_price = df_prices_current["low_price"].values[0]
 
-            if losscut_price < open_price:
+            if losscut_price < low_price:
                 print("    hold")
                 continue
 
             buy_stocks = df_stocks.at[ticker_symbol, "buy_stocks"]
             buy_price = df_stocks.at[ticker_symbol, "buy_price"]
-            funds += open_price * buy_stocks
+            funds += low_price * buy_stocks
 
             df_stocks = df_stocks.drop(ticker_symbol)
 
             action_id = len(df_action)
             df_action.at[action_id, "date"] = date_str
             df_action.at[action_id, "ticker_symbol"] = ticker_symbol
-            df_action.at[action_id, "price"] = open_price
+            df_action.at[action_id, "price"] = low_price
             df_action.at[action_id, "stocks"] = -buy_stocks
-            if buy_price < open_price:
+            if buy_price < low_price:
                 df_action.at[action_id, "result"] = "win"
             else:
                 df_action.at[action_id, "result"] = "lose"

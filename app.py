@@ -126,8 +126,10 @@ if __name__ == "__main__":
         backtest_3.train_profit_rate()
     elif args.subcommand == "backtest_4":
         backtest_4.execute()
-    elif args.subcommand == "backtest_5":
-        backtest_5.execute()
+    elif args.subcommand == "backtest_5.preprocess":
+        backtest_5.preprocess()
+    elif args.subcommand == "backtest_5.backtest":
+        backtest_5.backtest()
     elif args.subcommand == "simulate_trade_2":
         simulate_trade_2.execute()
     else:
