@@ -30,7 +30,8 @@ class PredictClassificationBase():
                 clf = self.model_fit(x_train, y_train)
                 joblib.dump(clf, f"{output_base_path}/model.{ticker_symbol}.joblib", compress=9)
 
-                self.model_score(clf, x_test, y_test, df_result, ticker_symbol)
+                df_predicted = self.model_score(clf, x_test, y_test, df_result, ticker_symbol)
+                df_predicted.to_csv(f"{output_base_path}/predicted.{ticker_symbol}.csv")
             except Exception as err:
                 print(err)
                 df_result.at[ticker_symbol, "message"] = err.__str__()
@@ -67,6 +68,12 @@ class PredictClassificationBase():
             df_result.at[result_id, f"score_{label}_total"] = totals[label]
             df_result.at[result_id, f"score_{label}_count"] = counts[label]
             df_result.at[result_id, f"score_{label}"] = counts[label] / totals[label]
+
+        df_predicted = pd.DataFrame()
+        df_predicted["y_test"] = y
+        df_predicted["y_pred"] = y_pred
+
+        return df_predicted
 
 
 class PredictRegressionBase(PredictClassificationBase):
