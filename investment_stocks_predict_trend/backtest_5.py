@@ -254,9 +254,9 @@ def backtest_single():
                 losscut_price = losscut_price_tmp
 
         # Turn end
-        df_price.at[prices_id, "asset"] = asset
-        df_price.at[prices_id, "buy_price"] = buy_price
-        df_price.at[prices_id, "losscut_price"] = losscut_price
+        df_prices.at[prices_id, "asset"] = asset
+        df_prices.at[prices_id, "buy_price"] = buy_price
+        df_prices.at[prices_id, "losscut_price"] = losscut_price
 
         df_prices.to_csv(f"{base_path}/stock_prices.{ticker_symbol}.backtested.csv")
 
