@@ -202,6 +202,65 @@ def backtest():
         print(df_result.loc[date_str])
 
 
+def backtest_single():
+    base_path = "local/backtest_5"
+    losscut_rate = 0.95
+
+    ticker_symbol = "1301"
+    dates = date_array(2018)
+
+    # Load data
+    df_prices = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.predicted.csv", index_col=0)
+
+    # Backtest
+    asset = 0
+    buy_price = None
+    losscut_price = None
+
+    for date in dates:
+        date_str = date.strftime("%Y-%m-%d")
+        print(f"date={date_str}")
+
+        # Skip
+        df_prices_current = df_prices.query(f"date=='{date_str}'")
+        if len(df_prices_current) == 0:
+            print("  no data")
+            continue
+
+        prices_id = df_prices_current.index[0]
+
+        # Buy
+        if buy_price is None and df_prices.at[prices_id-1, "predict"] == 1:
+            buy_price = df_prices.at[prices_id, "open_price"]
+            losscut_price = buy_price * losscut_rate
+
+            df_prices.at[prices_id, "action"] = "buy"
+
+        # Sell
+        if losscut_price is not None and df_prices.at[prices_id, "low_price"] < losscut_price:
+            profit = df_prices.at[prices_id, "low_price"] - buy_price
+            asset += profit
+
+            df_prices.at[prices_id, "action"] = "sell"
+            df_prices.at[prices_id, "profit"] = profit
+
+            buy_price = None
+            losscut_price = None
+
+        # Update losscut price
+        if buy_price is not None:
+            losscut_price_tmp = df_prices.at[prices_id, "open_price"] * losscut_rate
+            if losscut_price < losscut_price_tmp:
+                losscut_price = losscut_price_tmp
+
+        # Turn end
+        df_price.at[prices_id, "asset"] = asset
+        df_price.at[prices_id, "buy_price"] = buy_price
+        df_price.at[prices_id, "losscut_price"] = losscut_price
+
+        df_prices.to_csv(f"{base_path}/stock_prices.{ticker_symbol}.backtested.csv")
+
+
 def date_array(year):
     dates = []
 

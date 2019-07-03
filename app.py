@@ -130,6 +130,8 @@ if __name__ == "__main__":
         backtest_5.preprocess()
     elif args.subcommand == "backtest_5.backtest":
         backtest_5.backtest()
+    elif args.subcommand == "backtest_5.backtest_single":
+        backtest_5.backtest_single()
     elif args.subcommand == "simulate_trade_2":
         simulate_trade_2.execute()
     else:
