@@ -1,49 +1,96 @@
 import datetime
 import joblib
 import pandas as pd
+import os
 
 
 def preprocess():
     input_base_path = "local/backtest_preprocessed"
     output_base_path = "local/backtest_5"
 
-    start_date = "2018-01-01"
-    end_date = "2018-12-31"
+    df_companies = pd.read_csv(f"{input_base_path}/companies.csv", index_col=0)
+    df_companies_result = pd.DataFrame(columns=df_companies.columns)
 
-    df_result = pd.read_csv(f"{input_base_path}/result.csv", index_col=0)
-    df_companies = pd.DataFrame(columns=df_result.columns)
-
-    for ticker_symbol in df_result.query("message.isnull()").index:
+    for ticker_symbol in df_companies.index:
         print(ticker_symbol)
+
+        df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
 
         try:
             # Load data
             clf = joblib.load(f"{input_base_path}/model.{ticker_symbol}.joblib")
             df_prices = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
-            df_test_data = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.data_test.csv", index_col=0)
+            df_prices_all = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.all.csv", index_col=0)
 
-            x_test = []
-            for index in df_prices.query(f"'{start_date}' <= date <= '{end_date}'").index:
-                x_test.append(df_test_data.loc[index-1].values)
+            x = df_prices_all[[
+                "volume_change_std",
+                "adjusted_close_price_change_std",
+                "sma_5_std",
+                "sma_10_std",
+                "sma_20_std",
+                "sma_40_std",
+                "sma_80_std",
+                "momentum_5_std",
+                "momentum_10_std",
+                "momentum_20_std",
+                "momentum_40_std",
+                "momentum_80_std",
+                "roc_5_std",
+                "roc_10_std",
+                "roc_20_std",
+                "roc_40_std",
+                "roc_80_std",
+                "rsi_5_std",
+                "rsi_10_std",
+                "rsi_14_std",
+                "rsi_20_std",
+                "rsi_40_std",
+                "stochastic_k_5_std",
+                "stochastic_d_5_std",
+                "stochastic_sd_5_std",
+                "stochastic_k_9_std",
+                "stochastic_d_9_std",
+                "stochastic_sd_9_std",
+                "stochastic_k_20_std",
+                "stochastic_d_20_std",
+                "stochastic_sd_20_std",
+                "stochastic_k_25_std",
+                "stochastic_d_25_std",
+                "stochastic_sd_25_std",
+                "stochastic_k_40_std",
+                "stochastic_d_40_std",
+                "stochastic_sd_40_std"
+            ]].values
 
             # Predict
-            y_pred = clf.predict(x_test)
+            y_pred = clf.predict(x)
 
-            df_prices_predicted = df_prices.query(f"'{start_date}' <= date <= '{end_date}'")[
-                ["date", "open_price", "high_price", "low_price", "close_price", "volume", "adjusted_close_price"]]
-            df_prices_predicted["predict"] = y_pred
+            df_prices_all["predict"] = y_pred
 
-            df_companies.loc[ticker_symbol] = df_result.loc[ticker_symbol]
+            df_prices_predicted = df_prices[[
+                "date",
+                "open_price",
+                "high_price",
+                "low_price",
+                "close_price",
+                "volume"
+            ]].copy()
+            for id in df_prices_all.index:
+                df_prices_predicted.at[id, "predict"] = df_prices_all.at[id, "predict"]
 
             # Save
             df_prices_predicted.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.predicted.csv")
+
+            os.remove(f"{input_base_path}/model.{ticker_symbol}.joblib")
+            os.remove(f"{input_base_path}/stock_prices.{ticker_symbol}.csv")
+            os.remove(f"{input_base_path}/stock_prices.{ticker_symbol}.all.csv")
         except Exception as err:
             print(err)
-            df_companies.at[ticker_symbol, "message"] = err.__str__()
+            df_companies_result.at[ticker_symbol, "message"] = err.__str__()
 
-        print(df_companies.loc[ticker_symbol])
+        print(df_companies_result.loc[ticker_symbol])
 
-        df_companies.to_csv(f"{output_base_path}/companies.csv")
+        df_companies_result.to_csv(f"{output_base_path}/companies.csv")
 
 
 def backtest():
@@ -204,61 +251,85 @@ def backtest():
 
 def backtest_single():
     base_path = "local/backtest_5"
-    losscut_rate = 0.95
-
-    ticker_symbol = "1301"
-    dates = date_array(2018)
+    year = 2018
 
     # Load data
-    df_prices = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.predicted.csv", index_col=0)
+    df_companies = pd.read_csv(f"{base_path}/companies.csv", index_col=0)
+    df_companies_result = pd.DataFrame(columns=df_companies.columns)
+
+    # Backtest
+    for ticker_symbol in df_companies.index:
+        print(ticker_symbol)
+
+        try:
+            df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
+
+            df_prices = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.predicted.csv", index_col=0)
+            df_result = backtest_single_impl(df_prices, year)
+            df_companies_result.at[ticker_symbol, "total_profit"] = df_result["profit"].sum()
+            df_companies_result.at[ticker_symbol, "message"] = ""
+
+            # Save
+            df_result.to_csv(f"{base_path}/backtest.{ticker_symbol}.csv")
+        except Exception as err:
+            print(err)
+            df_companies_result.at[ticker_symbol, "message"] = err.__str__()
+
+        print(df_companies_result.loc[ticker_symbol])
+
+        df_companies_result.to_csv(f"{base_path}/result.csv")
+
+
+def backtest_single_impl(df_prices, target_year):
+    losscut_rate = 0.95
+
+    df = df_prices.copy()
 
     # Backtest
     asset = 0
     buy_price = None
     losscut_price = None
 
-    for date in dates:
+    for date in date_array(target_year):
         date_str = date.strftime("%Y-%m-%d")
-        print(f"date={date_str}")
 
         # Skip
-        df_prices_current = df_prices.query(f"date=='{date_str}'")
-        if len(df_prices_current) == 0:
-            print("  no data")
+        df_current = df.query(f"date=='{date_str}'")
+        if len(df_current) == 0:
             continue
 
-        prices_id = df_prices_current.index[0]
+        prices_id = df_current.index[0]
 
         # Buy
-        if buy_price is None and df_prices.at[prices_id-1, "predict"] == 1:
-            buy_price = df_prices.at[prices_id, "open_price"]
+        if buy_price is None and df.at[prices_id-1, "predict"] == 1:
+            buy_price = df.at[prices_id, "open_price"]
             losscut_price = buy_price * losscut_rate
 
-            df_prices.at[prices_id, "action"] = "buy"
+            df.at[prices_id, "action"] = "buy"
 
         # Sell
-        if losscut_price is not None and df_prices.at[prices_id, "low_price"] < losscut_price:
-            profit = df_prices.at[prices_id, "low_price"] - buy_price
+        if losscut_price is not None and df.at[prices_id, "low_price"] < losscut_price:
+            profit = df.at[prices_id, "low_price"] - buy_price
             asset += profit
 
-            df_prices.at[prices_id, "action"] = "sell"
-            df_prices.at[prices_id, "profit"] = profit
+            df.at[prices_id, "action"] = "sell"
+            df.at[prices_id, "profit"] = profit
 
             buy_price = None
             losscut_price = None
 
         # Update losscut price
         if buy_price is not None:
-            losscut_price_tmp = df_prices.at[prices_id, "open_price"] * losscut_rate
+            losscut_price_tmp = df.at[prices_id, "open_price"] * losscut_rate
             if losscut_price < losscut_price_tmp:
                 losscut_price = losscut_price_tmp
 
         # Turn end
-        df_prices.at[prices_id, "asset"] = asset
-        df_prices.at[prices_id, "buy_price"] = buy_price
-        df_prices.at[prices_id, "losscut_price"] = losscut_price
+        df.at[prices_id, "asset"] = asset
+        df.at[prices_id, "buy_price"] = buy_price
+        df.at[prices_id, "losscut_price"] = losscut_price
 
-        df_prices.to_csv(f"{base_path}/stock_prices.{ticker_symbol}.backtested.csv")
+    return df
 
 
 def date_array(year):
