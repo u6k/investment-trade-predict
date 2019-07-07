@@ -26,6 +26,8 @@ from investment_stocks_predict_trend import backtest_4
 from investment_stocks_predict_trend import backtest_5
 from investment_stocks_predict_trend import preprocess_1
 from investment_stocks_predict_trend import preprocess_2
+from investment_stocks_predict_trend import preprocess_3
+from investment_stocks_predict_trend import preprocess_4
 from investment_stocks_predict_trend import simulate_trade_2
 
 
@@ -105,6 +107,10 @@ if __name__ == "__main__":
         preprocess_1.execute()
     elif args.subcommand == "preprocess_2":
         preprocess_2.execute()
+    elif args.subcommand == "preprocess_3":
+        preprocess_3.execute()
+    elif args.subcommand == "preprocess_4":
+        preprocess_4.execute()
     elif args.subcommand == "backtest_1":
         backtest_1.execute()
     elif args.subcommand == "backtest_1.single":
