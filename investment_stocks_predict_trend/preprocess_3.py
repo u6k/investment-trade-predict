@@ -1,152 +1,96 @@
 import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler
 
 
 def execute():
-    input_base_path = "local/stock_prices_preprocessed"
-    output_base_path = "local/predict_preprocessed"
+    input_base_path_preprocess = "local/preprocess_2"
+    input_base_path_simulate = "local/simulate_trade_2"
+    output_base_path = "local/preprocess_3"
 
     train_start_date = "2008-01-01"
     train_end_date = "2017-12-31"
     test_start_date = "2018-01-01"
     test_end_date = "2018-12-31"
 
-    df_companies = pd.read_csv(f"{input_base_path}/companies.csv", index_col=0)
+    df_companies = pd.read_csv(f"{input_base_path_preprocess}/companies.csv", index_col=0)
     df_companies_result = pd.DataFrame(columns=df_companies.columns)
 
     for ticker_symbol in df_companies.index:
-        print(ticker_symbol)
+        print(f"ticker_symbol={ticker_symbol}")
 
         df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
 
         try:
-            df_prices = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
-            df_all, df_data_train, df_data_test, df_target_train, df_target_test = preprocess(
-                df_prices,
-                train_start_date,
-                train_end_date,
-                test_start_date,
-                test_end_date
-            )
-
-            # Save
-            df_all.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.all.csv")
-            df_data_train.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.data_train.csv")
-            df_data_test.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.data_test.csv")
-            df_target_train.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.target_train.csv")
-            df_target_test.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.target_test.csv")
+            preprocess(ticker_symbol, input_base_path_preprocess, input_base_path_simulate, output_base_path)
+            train_test_split(ticker_symbol, output_base_path, train_start_date, train_end_date, test_start_date, test_end_date)
 
             df_companies_result.at[ticker_symbol, "message"] = ""
         except Exception as err:
-            print(err)
-            df_companies_result.at[ticker_symbol, "message"] = f"error: {err.__str__()}"
+            df_companies_result.at[ticker_symbol, "message"] = err.__str__()
 
         df_companies_result.to_csv(f"{output_base_path}/companies.csv")
+        print(df_companies_result.loc[ticker_symbol])
 
 
-def preprocess(df_prices, train_start_date, train_end_date, test_start_date, test_end_date):
-    df = df_prices.copy()
+def preprocess(ticker_symbol, input_base_path_preprocess, input_base_path_simulate, output_base_path):
+    df_preprocess = pd.read_csv(f"{input_base_path_preprocess}/stock_prices.{ticker_symbol}.csv", index_col=0)
+    df_simulate = pd.read_csv(f"{input_base_path_simulate}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-    if len(df.query(f"'{train_start_date}' > date")) == 0 or len(df.query(f"date > '{test_end_date}'")) == 0:
-        raise Exception("skip: little date")
+    df = df_preprocess.drop([
+        "ticker_symbol",
+        "open_price",
+        "high_price",
+        "low_price",
+        "close_price",
+        "volume",
+        "adjusted_close_price",
+        "volume_change",
+        "adjusted_close_price_change",
+        "sma_5",
+        "sma_10",
+        "sma_20",
+        "sma_40",
+        "sma_80",
+        "momentum_5",
+        "momentum_10",
+        "momentum_20",
+        "momentum_40",
+        "momentum_80",
+        "roc_5",
+        "roc_10",
+        "roc_20",
+        "roc_40",
+        "roc_80",
+        "rsi_5",
+        "rsi_10",
+        "rsi_14",
+        "rsi_20",
+        "rsi_40",
+        "stochastic_k_5",
+        "stochastic_d_5",
+        "stochastic_sd_5",
+        "stochastic_k_9",
+        "stochastic_d_9",
+        "stochastic_sd_9",
+        "stochastic_k_20",
+        "stochastic_d_20",
+        "stochastic_sd_20",
+        "stochastic_k_25",
+        "stochastic_d_25",
+        "stochastic_sd_25",
+        "stochastic_k_40",
+        "stochastic_d_40",
+        "stochastic_sd_40"
+    ], axis=1).copy()
 
-    # drop columns
-    df = df.drop(["ticker_symbol",
-                  "open_price",
-                  "high_price",
-                  "low_price",
-                  "close_price",
-                  "trade_end_id",
-                  "sell_price",
-                  "profit"], axis=1)
+    df["predict_target_value"] = df_simulate["profit_rate"].shift(-1)
+    df["predict_target_flag"] = df["predict_target_value"].apply(lambda v: 1 if v > 1.0 else 0)
 
-    # simulate trade
-    df["profit_flag"] = df["profit_rate"].apply(lambda r: 1 if r > 1.0 else 0)
+    df.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
 
-    df["predict_target_label"] = df["profit_flag"].shift(-1)
-    df["predict_target_value"] = df["profit_rate"].shift(-1)
 
-    # volume
-    volume_change = df["volume"] / df["volume"].shift(1)
-    df["volume_change_std"] = StandardScaler().fit_transform(volume_change.values.reshape(-1, 1))
-
-    df = df.drop("volume", axis=1)
-
-    # adjusted close price
-    adjusted_close_price_change = df["adjusted_close_price"] / df["adjusted_close_price"].shift(1)
-    df["adjusted_close_price_change_std"] = StandardScaler().fit_transform(adjusted_close_price_change.values.reshape(-1, 1))
-
-    df = df.drop("adjusted_close_price", axis=1)
-
-    # SMA
-    sma = []
-    for sma_len in [5, 10, 20, 40, 80]:
-        sma = np.append(sma, df[f"sma_{sma_len}"].values)
-
-    scaler = StandardScaler().fit(sma.reshape(-1, 1))
-
-    for sma_len in [5, 10, 20, 40, 80]:
-        df[f"sma_{sma_len}_std"] = scaler.transform(df[f"sma_{sma_len}"].values.reshape(-1, 1))
-
-        df = df.drop(f"sma_{sma_len}", axis=1)
-
-    # Momentum
-    momentum = []
-    for momentum_len in [5, 10, 20, 40, 80]:
-        momentum = np.append(momentum, df[f"momentum_{momentum_len}"].values)
-
-    scaler = StandardScaler().fit(momentum.reshape(-1, 1))
-
-    for momentum_len in [5, 10, 20, 40, 80]:
-        df[f"momentum_{momentum_len}_std"] = scaler.transform(df[f"momentum_{momentum_len}"].values.reshape(-1, 1))
-
-        df = df.drop(f"momentum_{momentum_len}", axis=1)
-
-    # ROC
-    roc = []
-    for roc_len in [5, 10, 20, 40, 80]:
-        roc = np.append(roc, df[f"roc_{roc_len}"].values)
-
-    scaler = StandardScaler().fit(roc.reshape(-1, 1))
-
-    for roc_len in [5, 10, 20, 40, 80]:
-        df[f"roc_{roc_len}_std"] = scaler.transform(df[f"roc_{roc_len}"].values.reshape(-1, 1))
-
-        df = df.drop(f"roc_{roc_len}", axis=1)
-
-    # RSI
-    rsi = []
-    for rsi_len in [5, 10, 14, 20, 40]:
-        rsi = np.append(rsi, df[f"rsi_{rsi_len}"].values)
-
-    scaler = StandardScaler().fit(rsi.reshape(-1, 1))
-
-    for rsi_len in [5, 10, 14, 20, 40]:
-        df[f"rsi_{rsi_len}_std"] = scaler.transform(df[f"rsi_{rsi_len}"].values.reshape(-1, 1))
-
-        df = df.drop(f"rsi_{rsi_len}", axis=1)
-
-    # Stochastic
-    stochastic = []
-    for stochastic_len in [5, 9, 20, 25, 40]:
-        stochastic = np.append(stochastic, df[f"stochastic_k_{stochastic_len}"].values)
-        stochastic = np.append(stochastic, df[f"stochastic_d_{stochastic_len}"].values)
-        stochastic = np.append(stochastic, df[f"stochastic_sd_{stochastic_len}"].values)
-
-    scaler = StandardScaler().fit(stochastic.reshape(-1, 1))
-
-    for stochastic_len in [5, 9, 20, 25, 40]:
-        df[f"stochastic_k_{stochastic_len}_std"] = scaler.transform(df[f"stochastic_k_{stochastic_len}"].values.reshape(-1, 1))
-        df[f"stochastic_d_{stochastic_len}_std"] = scaler.transform(df[f"stochastic_d_{stochastic_len}"].values.reshape(-1, 1))
-        df[f"stochastic_sd_{stochastic_len}_std"] = scaler.transform(df[f"stochastic_sd_{stochastic_len}"].values.reshape(-1, 1))
-
-        df = df.drop(f"stochastic_k_{stochastic_len}", axis=1)
-        df = df.drop(f"stochastic_d_{stochastic_len}", axis=1)
-        df = df.drop(f"stochastic_sd_{stochastic_len}", axis=1)
-
-    # Split train and test
-    df = df.dropna()
+def train_test_split(ticker_symbol, base_path, train_start_date, train_end_date, test_start_date, test_end_date):
+    df = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
+        .dropna()
 
     train_start_id = df.query(f"'{train_start_date}' <= date <= '{train_end_date}'").index[0]
     train_end_id = df.query(f"'{train_start_date}' <= date <= '{train_end_date}'").index[-1]
@@ -158,4 +102,11 @@ def preprocess(df_prices, train_start_date, train_end_date, test_start_date, tes
     df_target_train = df.loc[train_start_id: train_end_id][["predict_target_value", "predict_target_label"]]
     df_target_test = df.loc[test_start_id: test_end_id][["predict_target_value", "predict_target_label"]]
 
-    return df, df_data_train, df_data_test, df_target_train, df_target_test
+    df_data_train.to_csv(f"{base_path}/stock_prices.{ticker_symbol}.data_train.csv")
+    df_data_test.to_csv(f"{base_path}/stock_prices.{ticker_symbol}.data_test.csv")
+    df_target_train.to_csv(f"{base_path}/stock_prices.{ticker_symbol}.target_train.csv")
+    df_target_test.to_csv(f"{base_path}/stock_prices.{ticker_symbol}.target_test.csv")
+
+
+if __name__ == "__main__":
+    execute()
