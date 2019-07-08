@@ -70,3 +70,7 @@ def preprocess(df_prices):
         df[f"stochastic_sd_{stochastic_len}"] = stochastic_sd
 
     return df
+
+
+if __name__ == "__main__":
+    execute()
