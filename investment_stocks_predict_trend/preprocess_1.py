@@ -1,6 +1,10 @@
 import pandas as pd
 
 
+if __name__ == "__main__":
+    execute()
+
+
 def execute():
     input_base_path = "local/simulate_trade_2"
     output_base_path = "local/stock_prices_preprocessed"
