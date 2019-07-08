@@ -4,8 +4,8 @@ from sklearn.preprocessing import StandardScaler
 
 
 def execute():
-    input_base_path = "local/stock_prices_preprocessed"
-    output_base_path = "local/predict_preprocessed"
+    input_base_path = "local/stock_prices_preprocessed_3"
+    output_base_path = "local/stock_prices_preprocessed_4"
 
     train_start_date = "2008-01-01"
     train_end_date = "2017-12-31"
@@ -44,6 +44,8 @@ def execute():
 
         df_companies_result.to_csv(f"{output_base_path}/companies.csv")
 
+        print(df_companies_result.loc[ticker_symbol])
+
 
 def preprocess(df_prices, train_start_date, train_end_date, test_start_date, test_end_date):
     df = df_prices.copy()
@@ -59,13 +61,13 @@ def preprocess(df_prices, train_start_date, train_end_date, test_start_date, tes
                   "close_price",
                   "trade_end_id",
                   "sell_price",
-                  "profit"], axis=1)
+                  "profit",
+                  "profit_rate"], axis=1)
 
     # simulate trade
-    df["profit_flag"] = df["profit_rate"].apply(lambda r: 1 if r > 1.0 else 0)
+    df["predict_target_label"] = df["day_trade_profit_flag"].shift(-1)
 
-    df["predict_target_label"] = df["profit_flag"].shift(-1)
-    df["predict_target_value"] = df["profit_rate"].shift(-1)
+    df = df.drop(["day_trade_profit_rate", "day_trade_profit_flag"], axis=1)
 
     # volume
     volume_change = df["volume"] / df["volume"].shift(1)
@@ -153,9 +155,9 @@ def preprocess(df_prices, train_start_date, train_end_date, test_start_date, tes
     test_start_id = df.query(f"'{test_start_date}' <= date <= '{test_end_date}'").index[0]
     test_end_id = df.query(f"'{test_start_date}' <= date <= '{test_end_date}'").index[-1]
 
-    df_data_train = df.loc[train_start_id: train_end_id].drop(["date", "profit_rate", "profit_flag", "predict_target_value", "predict_target_label"], axis=1)
-    df_data_test = df.loc[test_start_id: test_end_id].drop(["date", "profit_rate", "profit_flag", "predict_target_value", "predict_target_label"], axis=1)
-    df_target_train = df.loc[train_start_id: train_end_id][["predict_target_value", "predict_target_label"]]
-    df_target_test = df.loc[test_start_id: test_end_id][["predict_target_value", "predict_target_label"]]
+    df_data_train = df.loc[train_start_id: train_end_id].drop(["date", "predict_target_label"], axis=1)
+    df_data_test = df.loc[test_start_id: test_end_id].drop(["date", "predict_target_label"], axis=1)
+    df_target_train = df.loc[train_start_id: train_end_id][["predict_target_label"]]
+    df_target_test = df.loc[test_start_id: test_end_id][["predict_target_label"]]
 
     return df, df_data_train, df_data_test, df_target_train, df_target_test
