@@ -1,4 +1,6 @@
 import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 
 def execute():
@@ -27,20 +29,66 @@ def execute():
 def preprocess(ticker_symbol, input_base_path, output_base_path):
     df = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-    # Simple Moving Average
-    for sma_len in [5, 10, 20, 40, 80]:
+    # Volume change rate
+    df["volume_change"] = df["volume"] / df["volume"].shift(1)
+
+    # Standardize volume change rate
+    df["volume_change_std"] = StandardScaler().fit_transform(df["volume_change"].values.reshape(-1, 1))
+
+    # Adjusted close price change rate
+    df["adjusted_close_price_change"] = df["adjusted_close_price"] / df["adjusted_close_price"].shift(1)
+
+    # Standardize adjusted close price change rate
+    df["adjusted_close_price_change_std"] = StandardScaler().fit_transform(df["adjusted_close_price_change"].values.reshape(-1, 1))
+
+    # SMA (Simple Moving Average)
+    sma_len_array = [5, 10, 20, 40, 80]
+    for sma_len in sma_len_array:
         df[f"sma_{sma_len}"] = df["adjusted_close_price"].rolling(sma_len).mean()
 
+    # Standardize SMA
+    sma = []
+    for sma_len in sma_len_array:
+        sma = np.append(sma, df[f"sma_{sma_len}"].values)
+
+    scaler = StandardScaler().fit(sma.reshape(-1, 1))
+
+    for sma_len in sma_len_array:
+        df[f"sma_{sma_len}_std"] = scaler.transform(df[f"sma_{sma_len}"].values.reshape(-1, 1))
+
     # Momentum
-    for momentum_len in [5, 10, 20, 40, 80]:
+    momentum_len_array = [5, 10, 20, 40, 80]
+    for momentum_len in momentum_len_array:
         df[f"momentum_{momentum_len}"] = df["adjusted_close_price"] - df["adjusted_close_price"].shift(momentum_len-1)
 
+    # Standardize momentum
+    momentum = []
+    for momentum_len in momentum_len_array:
+        momentum = np.append(momentum, df[f"momentum_{momentum_len}"].values)
+
+    scaler = StandardScaler().fit(momentum.reshape(-1, 1))
+
+    for momentum_len in momentum_len_array:
+        df[f"momentum_{momentum_len}_std"] = scaler.transform(df[f"momentum_{momentum_len}"].values.reshape(-1, 1))
+
     # ROC (Rate Of Change)
-    for roc_len in [5, 10, 20, 40, 80]:
+    roc_len_array = [5, 10, 20, 40, 80]
+    for roc_len in roc_len_array:
         df[f"roc_{roc_len}"] = df["adjusted_close_price"].pct_change(roc_len-1)
 
+    # Standardize ROC
+    roc = []
+    for roc_len in roc_len_array:
+        roc = np.append(roc, df[f"roc_{roc_len}"].values)
+
+    scaler = StandardScaler().fit(roc.reshape(-1, 1))
+
+    for roc_len in roc_len_array:
+        df[f"roc_{roc_len}_std"] = scaler.transform(df[f"roc_{roc_len}"].values.reshape(-1, 1))
+
     # RSI
-    for rsi_len in [5, 10, 14, 20, 40]:
+    rsi_len_array = [5, 10, 14, 20, 40]
+    for rsi_len in rsi_len_array:
         diff = df["adjusted_close_price"].diff()
         diff = diff[1:]
         up, down = diff.copy(), diff.copy()
@@ -52,8 +100,19 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
 
         df[f"rsi_{rsi_len}"] = rsi
 
+    # Standardize RSI
+    rsi = []
+    for rsi_len in rsi_len_array:
+        rsi = np.append(rsi, df[f"rsi_{rsi_len}"].values)
+
+    scaler = StandardScaler().fit(rsi.reshape(-1, 1))
+
+    for rsi_len in rsi_len_array:
+        df[f"rsi_{rsi_len}_std"] = scaler.transform(df[f"rsi_{rsi_len}"].values.reshape(-1, 1))
+
     # Stochastic
-    for stochastic_len in [5, 9, 20, 25, 40]:
+    stochastic_len_array = [5, 9, 20, 25, 40]
+    for stochastic_len in stochastic_len_array:
         close = df["close_price"]
         low = df["low_price"]
         low_min = low.rolling(window=stochastic_len, center=False).min()
@@ -67,6 +126,20 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
         df[f"stochastic_k_{stochastic_len}"] = stochastic_k
         df[f"stochastic_d_{stochastic_len}"] = stochastic_d
         df[f"stochastic_sd_{stochastic_len}"] = stochastic_sd
+
+    # Standardize Stochastic
+    stochastic = []
+    for stochastic_len in stochastic_len_array:
+        stochastic = np.append(stochastic, df[f"stochastic_k_{stochastic_len}"].values)
+        stochastic = np.append(stochastic, df[f"stochastic_d_{stochastic_len}"].values)
+        stochastic = np.append(stochastic, df[f"stochastic_sd_{stochastic_len}"].values)
+
+    scaler = StandardScaler().fit(stochastic.reshape(-1, 1))
+
+    for stochastic_len in stochastic_len_array:
+        df[f"stochastic_k_{stochastic_len}_std"] = scaler.transform(df[f"stochastic_k_{stochastic_len}"].values.reshape(-1, 1))
+        df[f"stochastic_d_{stochastic_len}_std"] = scaler.transform(df[f"stochastic_d_{stochastic_len}"].values.reshape(-1, 1))
+        df[f"stochastic_sd_{stochastic_len}_std"] = scaler.transform(df[f"stochastic_sd_{stochastic_len}"].values.reshape(-1, 1))
 
     # Save
     df.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
