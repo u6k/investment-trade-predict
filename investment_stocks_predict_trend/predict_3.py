@@ -1,11 +1,11 @@
 from sklearn import ensemble
-from investment_stocks_predict_trend.predict_base import PredictClassificationBase
+from predict_base import PredictClassificationBase
 
 
 class PredictClassification_3(PredictClassificationBase):
     def execute(self):
-        input_base_path = "local/predict_preprocessed"
-        output_base_path = "local/predict_3"
+        input_base_path = "local/preprocess_4"
+        output_base_path = "local/predict_3_preprocess_4"
 
         self.train(input_base_path, output_base_path)
 
@@ -19,3 +19,7 @@ class PredictClassification_3(PredictClassificationBase):
 
     def model_fit(self, x_train, y_train):
         return ensemble.RandomForestClassifier(n_estimators=200).fit(x_train, y_train)
+
+
+if __name__ == "__main__":
+    PredictClassification_3().execute()
