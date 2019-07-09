@@ -92,13 +92,13 @@ def train_test_split(ticker_symbol, base_path, train_start_date, train_end_date,
     df = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
         .dropna()
 
+    if len(df.query(f"date < '{train_start_date}'")) == 0 or len(df.query(f"date > '{test_end_date}'")) == 0:
+        raise Exception("little data")
+
     train_start_id = df.query(f"'{train_start_date}' <= date <= '{train_end_date}'").index[0]
     train_end_id = df.query(f"'{train_start_date}' <= date <= '{train_end_date}'").index[-1]
     test_start_id = df.query(f"'{test_start_date}' <= date <= '{test_end_date}'").index[0]
     test_end_id = df.query(f"'{test_start_date}' <= date <= '{test_end_date}'").index[-1]
-
-    if len(df.query(f"date < '{train_start_date}'")) == 0 or len(df.query(f"date > '{test_end_date}'")) == 0:
-        raise Exception("little data")
 
     df_data_train = df.loc[train_start_id: train_end_id].drop(["date", "predict_target_value", "predict_target_label"], axis=1)
     df_data_test = df.loc[test_start_id: test_end_id].drop(["date", "predict_target_value", "predict_target_label"], axis=1)

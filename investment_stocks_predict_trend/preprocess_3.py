@@ -83,7 +83,7 @@ def preprocess(ticker_symbol, input_base_path_preprocess, input_base_path_simula
     ], axis=1).copy()
 
     df["predict_target_value"] = df_simulate["profit_rate"].shift(-1)
-    df["predict_target_flag"] = df["predict_target_value"].apply(lambda v: 1 if v > 1.0 else 0)
+    df["predict_target_label"] = df["predict_target_value"].apply(lambda v: 1 if v > 1.0 else 0)
 
     df.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
 
@@ -92,13 +92,16 @@ def train_test_split(ticker_symbol, base_path, train_start_date, train_end_date,
     df = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
         .dropna()
 
+    if len(df.query(f"date < '{train_start_date}'")) == 0 or len(df.query(f"date > '{test_end_date}'")) == 0:
+        raise Exception("little data")
+
     train_start_id = df.query(f"'{train_start_date}' <= date <= '{train_end_date}'").index[0]
     train_end_id = df.query(f"'{train_start_date}' <= date <= '{train_end_date}'").index[-1]
     test_start_id = df.query(f"'{test_start_date}' <= date <= '{test_end_date}'").index[0]
     test_end_id = df.query(f"'{test_start_date}' <= date <= '{test_end_date}'").index[-1]
 
-    df_data_train = df.loc[train_start_id: train_end_id].drop(["date", "profit_rate", "profit_flag", "predict_target_value", "predict_target_label"], axis=1)
-    df_data_test = df.loc[test_start_id: test_end_id].drop(["date", "profit_rate", "profit_flag", "predict_target_value", "predict_target_label"], axis=1)
+    df_data_train = df.loc[train_start_id: train_end_id].drop(["date", "predict_target_value", "predict_target_label"], axis=1)
+    df_data_test = df.loc[test_start_id: test_end_id].drop(["date", "predict_target_value", "predict_target_label"], axis=1)
     df_target_train = df.loc[train_start_id: train_end_id][["predict_target_value", "predict_target_label"]]
     df_target_test = df.loc[test_start_id: test_end_id][["predict_target_value", "predict_target_label"]]
 
