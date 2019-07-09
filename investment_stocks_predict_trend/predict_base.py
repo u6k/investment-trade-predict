@@ -40,6 +40,7 @@ class PredictClassificationBase():
             df_result.to_csv(f"{output_base_path}/result.csv")
 
     def load_data(self, input_base_path, ticker_symbol):
+        # Load data
         df_data_train = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.data_train.csv", index_col=0)
         df_data_test = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.data_test.csv", index_col=0)
         df_target_train = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.target_train.csv", index_col=0)
@@ -82,3 +83,9 @@ class PredictRegressionBase(PredictClassificationBase):
 
         df_result.at[result_id, "rmse"] = np.sqrt(mean_squared_error(y, y_pred))
         df_result.at[result_id, "r2"] = r2_score(y, y_pred)
+
+        df_predicted = pd.DataFrame()
+        df_predicted["y_test"] = y
+        df_predicted["y_pred"] = y_pred
+
+        return df_predicted
