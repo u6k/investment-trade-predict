@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_squared_error, r2_score
 
+from app_logging import L
+
 
 class PredictClassificationBase():
     def execute(self):
@@ -20,7 +22,7 @@ class PredictClassificationBase():
         df_result = pd.DataFrame(columns=df_companies.columns)
 
         for ticker_symbol in df_companies.query("message.isnull()").index:
-            print(f"ticker_symbol={ticker_symbol}")
+            L.info(f"ticker_symbol={ticker_symbol}")
 
             df_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
 
@@ -33,10 +35,9 @@ class PredictClassificationBase():
                 df_predicted = self.model_score(clf, x_test, y_test, df_result, ticker_symbol)
                 df_predicted.to_csv(f"{output_base_path}/predicted.{ticker_symbol}.csv")
             except Exception as err:
-                print(err)
                 df_result.at[ticker_symbol, "message"] = err.__str__()
 
-            print(df_result.loc[ticker_symbol])
+            L.info(df_result.loc[ticker_symbol])
             df_result.to_csv(f"{output_base_path}/result.csv")
 
     def load_data(self, input_base_path, ticker_symbol):
