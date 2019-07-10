@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
+from app_logging import L
+
 
 def execute():
     input_base_path = "local/preprocess_1"
@@ -11,7 +13,7 @@ def execute():
     df_companies_result = pd.DataFrame(columns=df_companies.columns)
 
     for ticker_symbol in df_companies.index:
-        print(f"ticker_symbol: {ticker_symbol}")
+        L.info(f"ticker_symbol: {ticker_symbol}")
 
         df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
 
@@ -19,11 +21,11 @@ def execute():
             preprocess(ticker_symbol, input_base_path, output_base_path)
             df_companies_result.at[ticker_symbol, "message"] = ""
         except Exception as err:
-            print(err)
+            L.warning(err)
             df_companies_result.at[ticker_symbol, "message"] = err.__str__()
 
         df_companies_result.to_csv(f"{output_base_path}/companies.csv")
-        print(df_companies_result.loc[ticker_symbol])
+        L.info(df_companies_result.loc[ticker_symbol])
 
 
 def preprocess(ticker_symbol, input_base_path, output_base_path):
