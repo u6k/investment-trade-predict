@@ -5,8 +5,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.metrics import mean_squared_error
 
-from investment_stocks_predict_trend import preprocess
-
 
 def execute():
     base_path = "local/stock_prices_preprocessed"
@@ -24,7 +22,7 @@ def execute():
 
             print(f"{sma_short_len}, {sma_long_len}, {ticker_symbol}")
 
-            df_result = preprocess.simulate_trade(df_prices, sma_short_len, sma_long_len)
+            df_result = df_prices  # preprocess.simulate_trade(df_prices, sma_short_len, sma_long_len)
             df_result = df_result[["date",
                                    "open_price",
                                    "high_price",
@@ -232,9 +230,10 @@ def execute_2():
 
             # 買いシグナルが点灯した銘柄について、過去1年間の移動平均法売買における資産を算出
             if (sma_short_2 < sma_long_2) and (sma_short_1 >= sma_long_1):
-                test_start_date = (date - datetime.timedelta(days=365)).strftime("%Y-%m-%d")
-                test_end_date = date_str
-                df_test_trade = preprocess.simulate_trade(load_base_dir, ticker_symbol, test_start_date, test_end_date, sma_short_len, sma_long_len)
+                # test_start_date = (date - datetime.timedelta(days=365)).strftime("%Y-%m-%d")
+                # test_end_date = date_str
+                df_test_trade = pd.DataFrame()
+                # df_test_trade = preprocess.simulate_trade(load_base_dir, ticker_symbol, test_start_date, test_end_date, sma_short_len, sma_long_len)
                 df_test_trade = df_test_trade.dropna()
                 last_assets = df_test_trade["assets"].values[-1]
 
