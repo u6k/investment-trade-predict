@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.10.0] - 2019-07-10
 
 ### Added
 
@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#7159: RSI(相対力指数)で売買シミュレーションを行う](https://redmine.u6k.me/issues/7159)
 - [#7160: ストキャスティクスで売買シミュレーションを行う](https://redmine.u6k.me/issues/7160)
 - [#7183: predictの入力データ、ラベルデータが間違えている](https://redmine.u6k.me/issues/7183)
+- [#7162: 入力データのサイズ・スケールを揃える](https://redmine.u6k.me/issues/7162)
+- [#7127: 性能評価が高いモデルとデータを使用してバックテストを行う](https://redmine.u6k.me/issues/7127)
+- [#7186: 翌日の騰落を予測・売買シミュレーションを行う](https://redmine.u6k.me/issues/7186)
+- [#7193: エントリーポイントをスクリプトごとに作成する](https://redmine.u6k.me/issues/7193)
+- [#7191: 最初の前処理を、各種整形を行い指標を算出することとする](https://redmine.u6k.me/issues/7191)
+- [#7196: ログ出力を適切に行う](https://redmine.u6k.me/issues/7196)
+- [#7192: 前処理、学習処理などを並列実行可能にする](https://redmine.u6k.me/issues/7192)
 
 ## [0.9.0] - 2019-06-26
 
