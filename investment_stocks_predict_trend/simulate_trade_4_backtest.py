@@ -4,13 +4,12 @@ import pandas as pd
 from app_logging import get_app_logger
 
 
-# simulate_trade_4
-def execute():
+def backtest_singles():
     L = get_app_logger()
     L.info("start")
 
     input_base_path = "local/backtest_preprocessed"
-    output_base_path = "local/backtest_6"
+    output_base_path = "local/simulate_trade_4_backtest"
 
     start_date = "2018-01-01"
     end_date = "2018-12-31"
@@ -18,7 +17,7 @@ def execute():
     df_companies = pd.read_csv(f"{input_base_path}/companies.csv", index_col=0)
     df_companies_result = pd.DataFrame(columns=df_companies.columns)
 
-    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(backtest_single)(ticker_symbol, input_base_path, output_base_path, start_date, end_date) for ticker_symbol in df_companies.index])
+    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(backtest_singles_impl)(ticker_symbol, input_base_path, output_base_path, start_date, end_date) for ticker_symbol in df_companies.index])
 
     for result in results:
         ticker_symbol = result[0]
@@ -32,7 +31,7 @@ def execute():
     L.info("finish")
 
 
-def backtest_single(ticker_symbol, input_base_path, output_base_path, start_date, end_date):
+def backtest_singles_impl(ticker_symbol, input_base_path, output_base_path, start_date, end_date):
     L = get_app_logger(f"backtest_single_impl.{ticker_symbol}")
     L.info(f"backtest_single: {ticker_symbol}")
 
@@ -98,4 +97,4 @@ def backtest_single(ticker_symbol, input_base_path, output_base_path, start_date
 
 
 if __name__ == "__main__":
-    execute()
+    backtest_singles()
