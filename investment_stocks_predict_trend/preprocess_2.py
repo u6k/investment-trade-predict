@@ -1,7 +1,7 @@
 import joblib
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 from app_logging import get_app_logger
 
@@ -42,11 +42,17 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
         # Standardize volume change rate
         df["volume_change_std"] = StandardScaler().fit_transform(df["volume_change"].values.reshape(-1, 1))
 
+        # MinMax volume change rate
+        df["volume_change_minmax"] = MinMaxScaler().fit_transform(df["volume_change"].values.reshape(-1, 1))
+
         # Adjusted close price change rate
         df["adjusted_close_price_change"] = df["adjusted_close_price"] / df["adjusted_close_price"].shift(1)
 
         # Standardize adjusted close price change rate
         df["adjusted_close_price_change_std"] = StandardScaler().fit_transform(df["adjusted_close_price_change"].values.reshape(-1, 1))
+
+        # MinMax adjusted close price change rate
+        df["adjusted_close_price_change_minmax"] = MinMaxScaler().fit_transform(df["adjusted_close_price_change"].values.reshape(-1, 1))
 
         # SMA (Simple Moving Average)
         sma_len_array = [5, 10, 20, 40, 80]
@@ -63,6 +69,16 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
         for sma_len in sma_len_array:
             df[f"sma_{sma_len}_std"] = scaler.transform(df[f"sma_{sma_len}"].values.reshape(-1, 1))
 
+        # MinMax SMA
+        sma = []
+        for sma_len in sma_len_array:
+            sma = np.append(sma, df[f"sma_{sma_len}"].values)
+
+        scaler = MinMaxScaler().fit(sma.reshape(-1, 1))
+
+        for sma_len in sma_len_array:
+            df[f"sma_{sma_len}_minmax"] = scaler.transform(df[f"sma_{sma_len}"].values.reshape(-1, 1))
+
         # Momentum
         momentum_len_array = [5, 10, 20, 40, 80]
         for momentum_len in momentum_len_array:
@@ -78,6 +94,16 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
         for momentum_len in momentum_len_array:
             df[f"momentum_{momentum_len}_std"] = scaler.transform(df[f"momentum_{momentum_len}"].values.reshape(-1, 1))
 
+        # MinMax momentum
+        momentum = []
+        for momentum_len in momentum_len_array:
+            momentum = np.append(momentum, df[f"momentum_{momentum_len}"].values)
+
+        scaler = MinMaxScaler().fit(momentum.reshape(-1, 1))
+
+        for momentum_len in momentum_len_array:
+            df[f"momentum_{momentum_len}_minmax"] = scaler.transform(df[f"momentum_{momentum_len}"].values.reshape(-1, 1))
+
         # ROC (Rate Of Change)
         roc_len_array = [5, 10, 20, 40, 80]
         for roc_len in roc_len_array:
@@ -92,6 +118,16 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
 
         for roc_len in roc_len_array:
             df[f"roc_{roc_len}_std"] = scaler.transform(df[f"roc_{roc_len}"].values.reshape(-1, 1))
+
+        # MinMax ROC
+        roc = []
+        for roc_len in roc_len_array:
+            roc = np.append(roc, df[f"roc_{roc_len}"].values)
+
+        scaler = MinMaxScaler().fit(roc.reshape(-1, 1))
+
+        for roc_len in roc_len_array:
+            df[f"roc_{roc_len}_minmax"] = scaler.transform(df[f"roc_{roc_len}"].values.reshape(-1, 1))
 
         # RSI
         rsi_len_array = [5, 10, 14, 20, 40]
@@ -116,6 +152,16 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
 
         for rsi_len in rsi_len_array:
             df[f"rsi_{rsi_len}_std"] = scaler.transform(df[f"rsi_{rsi_len}"].values.reshape(-1, 1))
+
+        # MinMax RSI
+        rsi = []
+        for rsi_len in rsi_len_array:
+            rsi = np.append(rsi, df[f"rsi_{rsi_len}"].values)
+
+        scaler = MinMaxScaler().fit(rsi.reshape(-1, 1))
+
+        for rsi_len in rsi_len_array:
+            df[f"rsi_{rsi_len}_minmax"] = scaler.transform(df[f"rsi_{rsi_len}"].values.reshape(-1, 1))
 
         # Stochastic
         stochastic_len_array = [5, 9, 20, 25, 40]
@@ -147,6 +193,20 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
             df[f"stochastic_k_{stochastic_len}_std"] = scaler.transform(df[f"stochastic_k_{stochastic_len}"].values.reshape(-1, 1))
             df[f"stochastic_d_{stochastic_len}_std"] = scaler.transform(df[f"stochastic_d_{stochastic_len}"].values.reshape(-1, 1))
             df[f"stochastic_sd_{stochastic_len}_std"] = scaler.transform(df[f"stochastic_sd_{stochastic_len}"].values.reshape(-1, 1))
+
+        # MinMax Stochastic
+        stochastic = []
+        for stochastic_len in stochastic_len_array:
+            stochastic = np.append(stochastic, df[f"stochastic_k_{stochastic_len}"].values)
+            stochastic = np.append(stochastic, df[f"stochastic_d_{stochastic_len}"].values)
+            stochastic = np.append(stochastic, df[f"stochastic_sd_{stochastic_len}"].values)
+
+        scaler = MinMaxScaler().fit(stochastic.reshape(-1, 1))
+
+        for stochastic_len in stochastic_len_array:
+            df[f"stochastic_k_{stochastic_len}_minmax"] = scaler.transform(df[f"stochastic_k_{stochastic_len}"].values.reshape(-1, 1))
+            df[f"stochastic_d_{stochastic_len}_minmax"] = scaler.transform(df[f"stochastic_d_{stochastic_len}"].values.reshape(-1, 1))
+            df[f"stochastic_sd_{stochastic_len}_minmax"] = scaler.transform(df[f"stochastic_sd_{stochastic_len}"].values.reshape(-1, 1))
 
         # Save
         df.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
