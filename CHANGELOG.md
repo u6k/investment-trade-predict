@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- [#7147: この手法を試す…新高値更新のアルゴリズム ](https://redmine.u6k.me/issues/7147?)
+- [#7147: この手法を試す…新高値更新のアルゴリズム ](https://redmine.u6k.me/issues/7147)
+- [#7202: デイトレードの単一銘柄バックテストを実装する](https://redmine.u6k.me/issues/7202)
 
 ## [0.10.0] - 2019-07-10
 
