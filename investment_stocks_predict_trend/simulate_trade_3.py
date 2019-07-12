@@ -4,7 +4,7 @@ import pandas as pd
 from app_logging import get_app_logger
 
 
-def execute():
+def simulate_trade():
     L = get_app_logger()
     L.info("start")
 
@@ -14,7 +14,7 @@ def execute():
     df_companies = pd.read_csv(f"{input_base_path}/companies.csv", index_col=0)
     df_companies_result = pd.DataFrame(columns=df_companies.columns)
 
-    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(simulate_trade)(ticker_symbol, input_base_path, output_base_path) for ticker_symbol in df_companies.index])
+    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(simulate_trade_impl)(ticker_symbol, input_base_path, output_base_path) for ticker_symbol in df_companies.index])
 
     for result in results:
         ticker_symbol = result[0]
@@ -27,7 +27,7 @@ def execute():
     L.info("finish")
 
 
-def simulate_trade(ticker_symbol, input_base_path, output_base_path):
+def simulate_trade_impl(ticker_symbol, input_base_path, output_base_path):
     L = get_app_logger(ticker_symbol)
     L.info(f"simulate_trade: {ticker_symbol}")
 
@@ -48,4 +48,4 @@ def simulate_trade(ticker_symbol, input_base_path, output_base_path):
 
 
 if __name__ == "__main__":
-    execute()
+    simulate_trade()
