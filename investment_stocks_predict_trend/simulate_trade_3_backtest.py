@@ -44,7 +44,7 @@ def backtest_singles_impl(ticker_symbol, input_base_path, output_base_path, star
         clf = joblib.load(f"{input_base_path}/model.{ticker_symbol}.joblib")
         df_prices = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
         df_preprocessed = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.preprocessed.csv", index_col=0) \
-                .drop(["date", "predict_target_value", "predict_target_label"], axis=1)
+            .drop(["date", "predict_target_value", "predict_target_label"], axis=1)
 
         # Predict
         target_period_ids = df_prices.query(f"'{start_date}' <= date <= '{end_date}'").index
