@@ -37,10 +37,6 @@ def simulate_trade_impl(ticker_symbol, s3_bucket, input_base_path, output_base_p
     hold_period = 5
 
     try:
-        # TODO
-        if ticker_symbol > 1400:
-            raise Exception("skip")
-
         # Load data
         df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
