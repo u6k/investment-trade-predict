@@ -32,7 +32,7 @@ def backtest_singles():
         df_companies_result.at[ticker_symbol, "trade_count"] = result["trade_count"]
 
     app_s3.write_dataframe(df_companies_result, s3_bucket, f"{output_base_path}/companies.csv")
-    df_companies_result.to_csv("companies.simulate_trade_4_backtest.csv")
+    df_companies_result.to_csv("local/companies.simulate_trade_4_backtest.csv")
     L.info("finish")
 
 

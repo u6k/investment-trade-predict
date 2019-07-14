@@ -5,8 +5,8 @@ from predict_base import PredictRegressionBase
 class PredictRegression_4(PredictRegressionBase):
     def execute(self):
         s3_bucket = "u6k"
-        input_base_path = "ml-data/stocks/preprocess_4.test"
-        output_base_path = "ml-data/stocks/predict_4_preprocess_4.test"
+        input_base_path = "ml-data/stocks/preprocess_5.test"
+        output_base_path = "ml-data/stocks/predict_4_preprocess_5.test"
 
         self.train(s3_bucket, input_base_path, output_base_path)
 

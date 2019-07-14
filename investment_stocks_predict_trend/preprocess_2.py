@@ -27,7 +27,7 @@ def execute():
         df_companies_result.at[ticker_symbol, "message"] = result["message"]
 
     app_s3.write_dataframe(df_companies_result, s3_bucket, f"{output_base_path}/companies.csv")
-    df_companies_result.to_csv("companies.preprocess_2.csv")
+    df_companies_result.to_csv("local/companies.preprocess_2.csv")
     L.info("finish")
 
 
