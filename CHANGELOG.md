@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#7147: この手法を試す…新高値更新のアルゴリズム ](https://redmine.u6k.me/issues/7147)
 - [#7202: デイトレードの単一銘柄バックテストを実装する](https://redmine.u6k.me/issues/7202)
+- [#7200: ローカル・ストレージではなくS3を使用するようにする](https://redmine.u6k.me/issues/7200)
 
 ## [0.10.0] - 2019-07-10
 
