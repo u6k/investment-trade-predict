@@ -4,37 +4,39 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 from app_logging import get_app_logger
+import app_s3
 
 
 def execute():
     L = get_app_logger()
     L.info("start")
 
-    input_base_path = "local/preprocess_1"
-    output_base_path = "local/preprocess_2"
+    s3_bucket = "u6k"
+    input_base_path = "ml-data/stocks/preprocess_1.test"
+    output_base_path = "ml-data/stocks/preprocess_2.test"
 
-    df_companies = pd.read_csv(f"{input_base_path}/companies.csv", index_col=0)
+    df_companies = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/companies.csv", index_col=0)
     df_companies_result = pd.DataFrame(columns=df_companies.columns)
 
-    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(preprocess)(ticker_symbol, input_base_path, output_base_path) for ticker_symbol in df_companies.index])
+    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(preprocess)(ticker_symbol, s3_bucket, input_base_path, output_base_path) for ticker_symbol in df_companies.index])
 
     for result in results:
-        ticker_symbol = result[0]
-        message = result[1]
+        ticker_symbol = result["ticker_symbol"]
 
         df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
-        df_companies_result.at[ticker_symbol, "message"] = message
+        df_companies_result.at[ticker_symbol, "message"] = result["message"]
 
-    df_companies_result.to_csv(f"{output_base_path}/companies.csv")
+    app_s3.write_dataframe(df_companies_result, s3_bucket, f"{output_base_path}/companies.csv")
+    df_companies_result.to_csv("local/companies.preprocess_2.csv")
     L.info("finish")
 
 
-def preprocess(ticker_symbol, input_base_path, output_base_path):
+def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
     L = get_app_logger(ticker_symbol)
     L.info(f"ticker_symbol: {ticker_symbol}")
 
     try:
-        df = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+        df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
         # Volume change rate
         df["volume_change"] = df["volume"] / df["volume"].shift(1)
@@ -209,14 +211,17 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
             df[f"stochastic_sd_{stochastic_len}_minmax"] = scaler.transform(df[f"stochastic_sd_{stochastic_len}"].values.reshape(-1, 1))
 
         # Save
-        df.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
+        app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
 
         message = ""
     except Exception as err:
         L.exception(err)
         message = err.__str__()
 
-    return (ticker_symbol, message)
+    return {
+        "ticker_symbol": ticker_symbol,
+        "message": message
+    }
 
 
 if __name__ == "__main__":

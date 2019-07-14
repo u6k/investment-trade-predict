@@ -2,45 +2,47 @@ import joblib
 import pandas as pd
 
 from app_logging import get_app_logger
+import app_s3
 
 
 def execute():
     L = get_app_logger()
     L.info("start")
 
-    input_base_path_preprocess = "local/preprocess_2"
-    input_base_path_simulate = "local/simulate_trade_3"
-    output_base_path = "local/preprocess_4"
+    s3_bucket = "u6k"
+    input_base_path_preprocess = "ml-data/stocks/preprocess_2.test"
+    input_base_path_simulate = "ml-data/stocks/simulate_trade_3.test"
+    output_base_path = "ml-data/stocks/preprocess_4.test"
 
     train_start_date = "2008-01-01"
     train_end_date = "2017-12-31"
     test_start_date = "2018-01-01"
     test_end_date = "2018-12-31"
 
-    df_companies = pd.read_csv(f"{input_base_path_preprocess}/companies.csv", index_col=0)
+    df_companies = app_s3.read_dataframe(s3_bucket, f"{input_base_path_preprocess}/companies.csv", index_col=0)
     df_companies_result = pd.DataFrame(columns=df_companies.columns)
 
-    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(preprocess)(ticker_symbol, input_base_path_preprocess, input_base_path_simulate, output_base_path) for ticker_symbol in df_companies.index])
-    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(train_test_split)(ticker_symbol, output_base_path, train_start_date, train_end_date, test_start_date, test_end_date) for ticker_symbol in df_companies.index])
+    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(preprocess)(ticker_symbol, s3_bucket, input_base_path_preprocess, input_base_path_simulate, output_base_path) for ticker_symbol in df_companies.index])
+    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(train_test_split)(ticker_symbol, s3_bucket, output_base_path, train_start_date, train_end_date, test_start_date, test_end_date) for ticker_symbol in df_companies.index])
 
     for result in results:
-        ticker_symbol = result[0]
-        message = result[1]
+        ticker_symbol = result["ticker_symbol"]
 
         df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
-        df_companies_result.at[ticker_symbol, "message"] = message
+        df_companies_result.at[ticker_symbol, "message"] = result["message"]
 
-    df_companies_result.to_csv(f"{output_base_path}/companies.csv")
+    app_s3.write_dataframe(df_companies_result, s3_bucket, f"{output_base_path}/companies.csv")
+    df_companies_result.to_csv("local/companies.preprocess_4.csv")
     L.info("finish")
 
 
-def preprocess(ticker_symbol, input_base_path_preprocess, input_base_path_simulate, output_base_path):
+def preprocess(ticker_symbol, s3_bucket, input_base_path_preprocess, input_base_path_simulate, output_base_path):
     L = get_app_logger(f"preprocess.{ticker_symbol}")
     L.info(f"preprocess: {ticker_symbol}")
 
     try:
-        df_preprocess = pd.read_csv(f"{input_base_path_preprocess}/stock_prices.{ticker_symbol}.csv", index_col=0)
-        df_simulate = pd.read_csv(f"{input_base_path_simulate}/stock_prices.{ticker_symbol}.csv", index_col=0)
+        df_preprocess = app_s3.read_dataframe(s3_bucket, f"{input_base_path_preprocess}/stock_prices.{ticker_symbol}.csv", index_col=0)
+        df_simulate = app_s3.read_dataframe(s3_bucket, f"{input_base_path_simulate}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
         df = df_preprocess[[
             "date",
@@ -86,22 +88,25 @@ def preprocess(ticker_symbol, input_base_path_preprocess, input_base_path_simula
         df["predict_target_value"] = df_simulate["day_trade_profit_rate"].shift(-1)
         df["predict_target_label"] = df_simulate["day_trade_profit_flag"].shift(-1)
 
-        df.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
+        app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
 
         message = ""
     except Exception as err:
         L.exception(err)
         message = err.__str__()
 
-    return (ticker_symbol, message)
+    return {
+        "ticker_symbol": ticker_symbol,
+        "message": message
+    }
 
 
-def train_test_split(ticker_symbol, base_path, train_start_date, train_end_date, test_start_date, test_end_date):
+def train_test_split(ticker_symbol, s3_bucket, base_path, train_start_date, train_end_date, test_start_date, test_end_date):
     L = get_app_logger(f"train_test_split.{ticker_symbol}")
     L.info(f"train_test_split: {ticker_symbol}")
 
     try:
-        df = pd.read_csv(f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
+        df = app_s3.read_dataframe(s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
             .dropna()
 
         if len(df.query(f"date < '{train_start_date}'")) == 0 or len(df.query(f"date > '{test_end_date}'")) == 0:
@@ -117,17 +122,20 @@ def train_test_split(ticker_symbol, base_path, train_start_date, train_end_date,
         df_target_train = df.loc[train_start_id: train_end_id][["predict_target_value", "predict_target_label"]]
         df_target_test = df.loc[test_start_id: test_end_id][["predict_target_value", "predict_target_label"]]
 
-        df_data_train.to_csv(f"{base_path}/stock_prices.{ticker_symbol}.data_train.csv")
-        df_data_test.to_csv(f"{base_path}/stock_prices.{ticker_symbol}.data_test.csv")
-        df_target_train.to_csv(f"{base_path}/stock_prices.{ticker_symbol}.target_train.csv")
-        df_target_test.to_csv(f"{base_path}/stock_prices.{ticker_symbol}.target_test.csv")
+        app_s3.write_dataframe(df_data_train, s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.data_train.csv")
+        app_s3.write_dataframe(df_data_test, s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.data_test.csv")
+        app_s3.write_dataframe(df_target_train, s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.target_train.csv")
+        app_s3.write_dataframe(df_target_test, s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.target_test.csv")
 
         message = ""
     except Exception as err:
         L.exception(err)
         message = err.__str__()
 
-    return (ticker_symbol, message)
+    return {
+        "ticker_symbol": ticker_symbol,
+        "message": message
+    }
 
 
 if __name__ == "__main__":
