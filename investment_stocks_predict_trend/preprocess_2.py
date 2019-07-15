@@ -1,40 +1,42 @@
 import joblib
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 from app_logging import get_app_logger
+import app_s3
 
 
 def execute():
     L = get_app_logger()
     L.info("start")
 
-    input_base_path = "local/preprocess_1"
-    output_base_path = "local/preprocess_2"
+    s3_bucket = "u6k"
+    input_base_path = "ml-data/stocks/preprocess_1.test"
+    output_base_path = "ml-data/stocks/preprocess_2.test"
 
-    df_companies = pd.read_csv(f"{input_base_path}/companies.csv", index_col=0)
+    df_companies = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/companies.csv", index_col=0)
     df_companies_result = pd.DataFrame(columns=df_companies.columns)
 
-    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(preprocess)(ticker_symbol, input_base_path, output_base_path) for ticker_symbol in df_companies.index])
+    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(preprocess)(ticker_symbol, s3_bucket, input_base_path, output_base_path) for ticker_symbol in df_companies.index])
 
     for result in results:
-        ticker_symbol = result[0]
-        message = result[1]
+        ticker_symbol = result["ticker_symbol"]
 
         df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
-        df_companies_result.at[ticker_symbol, "message"] = message
+        df_companies_result.at[ticker_symbol, "message"] = result["message"]
 
-    df_companies_result.to_csv(f"{output_base_path}/companies.csv")
+    app_s3.write_dataframe(df_companies_result, s3_bucket, f"{output_base_path}/companies.csv")
+    df_companies_result.to_csv("local/companies.preprocess_2.csv")
     L.info("finish")
 
 
-def preprocess(ticker_symbol, input_base_path, output_base_path):
+def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
     L = get_app_logger(ticker_symbol)
     L.info(f"ticker_symbol: {ticker_symbol}")
 
     try:
-        df = pd.read_csv(f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+        df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
         # Volume change rate
         df["volume_change"] = df["volume"] / df["volume"].shift(1)
@@ -42,11 +44,17 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
         # Standardize volume change rate
         df["volume_change_std"] = StandardScaler().fit_transform(df["volume_change"].values.reshape(-1, 1))
 
+        # MinMax volume change rate
+        df["volume_change_minmax"] = MinMaxScaler().fit_transform(df["volume_change"].values.reshape(-1, 1))
+
         # Adjusted close price change rate
         df["adjusted_close_price_change"] = df["adjusted_close_price"] / df["adjusted_close_price"].shift(1)
 
         # Standardize adjusted close price change rate
         df["adjusted_close_price_change_std"] = StandardScaler().fit_transform(df["adjusted_close_price_change"].values.reshape(-1, 1))
+
+        # MinMax adjusted close price change rate
+        df["adjusted_close_price_change_minmax"] = MinMaxScaler().fit_transform(df["adjusted_close_price_change"].values.reshape(-1, 1))
 
         # SMA (Simple Moving Average)
         sma_len_array = [5, 10, 20, 40, 80]
@@ -63,6 +71,16 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
         for sma_len in sma_len_array:
             df[f"sma_{sma_len}_std"] = scaler.transform(df[f"sma_{sma_len}"].values.reshape(-1, 1))
 
+        # MinMax SMA
+        sma = []
+        for sma_len in sma_len_array:
+            sma = np.append(sma, df[f"sma_{sma_len}"].values)
+
+        scaler = MinMaxScaler().fit(sma.reshape(-1, 1))
+
+        for sma_len in sma_len_array:
+            df[f"sma_{sma_len}_minmax"] = scaler.transform(df[f"sma_{sma_len}"].values.reshape(-1, 1))
+
         # Momentum
         momentum_len_array = [5, 10, 20, 40, 80]
         for momentum_len in momentum_len_array:
@@ -78,6 +96,16 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
         for momentum_len in momentum_len_array:
             df[f"momentum_{momentum_len}_std"] = scaler.transform(df[f"momentum_{momentum_len}"].values.reshape(-1, 1))
 
+        # MinMax momentum
+        momentum = []
+        for momentum_len in momentum_len_array:
+            momentum = np.append(momentum, df[f"momentum_{momentum_len}"].values)
+
+        scaler = MinMaxScaler().fit(momentum.reshape(-1, 1))
+
+        for momentum_len in momentum_len_array:
+            df[f"momentum_{momentum_len}_minmax"] = scaler.transform(df[f"momentum_{momentum_len}"].values.reshape(-1, 1))
+
         # ROC (Rate Of Change)
         roc_len_array = [5, 10, 20, 40, 80]
         for roc_len in roc_len_array:
@@ -92,6 +120,16 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
 
         for roc_len in roc_len_array:
             df[f"roc_{roc_len}_std"] = scaler.transform(df[f"roc_{roc_len}"].values.reshape(-1, 1))
+
+        # MinMax ROC
+        roc = []
+        for roc_len in roc_len_array:
+            roc = np.append(roc, df[f"roc_{roc_len}"].values)
+
+        scaler = MinMaxScaler().fit(roc.reshape(-1, 1))
+
+        for roc_len in roc_len_array:
+            df[f"roc_{roc_len}_minmax"] = scaler.transform(df[f"roc_{roc_len}"].values.reshape(-1, 1))
 
         # RSI
         rsi_len_array = [5, 10, 14, 20, 40]
@@ -116,6 +154,16 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
 
         for rsi_len in rsi_len_array:
             df[f"rsi_{rsi_len}_std"] = scaler.transform(df[f"rsi_{rsi_len}"].values.reshape(-1, 1))
+
+        # MinMax RSI
+        rsi = []
+        for rsi_len in rsi_len_array:
+            rsi = np.append(rsi, df[f"rsi_{rsi_len}"].values)
+
+        scaler = MinMaxScaler().fit(rsi.reshape(-1, 1))
+
+        for rsi_len in rsi_len_array:
+            df[f"rsi_{rsi_len}_minmax"] = scaler.transform(df[f"rsi_{rsi_len}"].values.reshape(-1, 1))
 
         # Stochastic
         stochastic_len_array = [5, 9, 20, 25, 40]
@@ -148,15 +196,32 @@ def preprocess(ticker_symbol, input_base_path, output_base_path):
             df[f"stochastic_d_{stochastic_len}_std"] = scaler.transform(df[f"stochastic_d_{stochastic_len}"].values.reshape(-1, 1))
             df[f"stochastic_sd_{stochastic_len}_std"] = scaler.transform(df[f"stochastic_sd_{stochastic_len}"].values.reshape(-1, 1))
 
+        # MinMax Stochastic
+        stochastic = []
+        for stochastic_len in stochastic_len_array:
+            stochastic = np.append(stochastic, df[f"stochastic_k_{stochastic_len}"].values)
+            stochastic = np.append(stochastic, df[f"stochastic_d_{stochastic_len}"].values)
+            stochastic = np.append(stochastic, df[f"stochastic_sd_{stochastic_len}"].values)
+
+        scaler = MinMaxScaler().fit(stochastic.reshape(-1, 1))
+
+        for stochastic_len in stochastic_len_array:
+            df[f"stochastic_k_{stochastic_len}_minmax"] = scaler.transform(df[f"stochastic_k_{stochastic_len}"].values.reshape(-1, 1))
+            df[f"stochastic_d_{stochastic_len}_minmax"] = scaler.transform(df[f"stochastic_d_{stochastic_len}"].values.reshape(-1, 1))
+            df[f"stochastic_sd_{stochastic_len}_minmax"] = scaler.transform(df[f"stochastic_sd_{stochastic_len}"].values.reshape(-1, 1))
+
         # Save
-        df.to_csv(f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
+        app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
 
         message = ""
     except Exception as err:
         L.exception(err)
         message = err.__str__()
 
-    return (ticker_symbol, message)
+    return {
+        "ticker_symbol": ticker_symbol,
+        "message": message
+    }
 
 
 if __name__ == "__main__":

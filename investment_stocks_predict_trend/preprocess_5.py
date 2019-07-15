@@ -11,8 +11,8 @@ def execute():
 
     s3_bucket = "u6k"
     input_base_path_preprocess = "ml-data/stocks/preprocess_2.test"
-    input_base_path_simulate = "ml-data/stocks/simulate_trade_3.test"
-    output_base_path = "ml-data/stocks/preprocess_4.test"
+    input_base_path_simulate = "ml-data/stocks/simulate_trade_4.test"
+    output_base_path = "ml-data/stocks/preprocess_5.test"
 
     train_start_date = "2008-01-01"
     train_end_date = "2017-12-31"
@@ -32,7 +32,7 @@ def execute():
         df_companies_result.at[ticker_symbol, "message"] = result["message"]
 
     app_s3.write_dataframe(df_companies_result, s3_bucket, f"{output_base_path}/companies.csv")
-    df_companies_result.to_csv("local/companies.preprocess_4.csv")
+    df_companies_result.to_csv("local/companies.preprocess_5.csv")
     L.info("finish")
 
 
@@ -46,47 +46,47 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path_preprocess, input_base_
 
         df = df_preprocess[[
             "date",
-            "volume_change_std",
-            "adjusted_close_price_change_std",
-            "sma_5_std",
-            "sma_10_std",
-            "sma_20_std",
-            "sma_40_std",
-            "sma_80_std",
-            "momentum_5_std",
-            "momentum_10_std",
-            "momentum_20_std",
-            "momentum_40_std",
-            "momentum_80_std",
-            "roc_5_std",
-            "roc_10_std",
-            "roc_20_std",
-            "roc_40_std",
-            "roc_80_std",
-            "rsi_5_std",
-            "rsi_10_std",
-            "rsi_14_std",
-            "rsi_20_std",
-            "rsi_40_std",
-            "stochastic_k_5_std",
-            "stochastic_d_5_std",
-            "stochastic_sd_5_std",
-            "stochastic_k_9_std",
-            "stochastic_d_9_std",
-            "stochastic_sd_9_std",
-            "stochastic_k_20_std",
-            "stochastic_d_20_std",
-            "stochastic_sd_20_std",
-            "stochastic_k_25_std",
-            "stochastic_d_25_std",
-            "stochastic_sd_25_std",
-            "stochastic_k_40_std",
-            "stochastic_d_40_std",
-            "stochastic_sd_40_std"
+            "volume_change_minmax",
+            "adjusted_close_price_change_minmax",
+            "sma_5_minmax",
+            "sma_10_minmax",
+            "sma_20_minmax",
+            "sma_40_minmax",
+            "sma_80_minmax",
+            "momentum_5_minmax",
+            "momentum_10_minmax",
+            "momentum_20_minmax",
+            "momentum_40_minmax",
+            "momentum_80_minmax",
+            "roc_5_minmax",
+            "roc_10_minmax",
+            "roc_20_minmax",
+            "roc_40_minmax",
+            "roc_80_minmax",
+            "rsi_5_minmax",
+            "rsi_10_minmax",
+            "rsi_14_minmax",
+            "rsi_20_minmax",
+            "rsi_40_minmax",
+            "stochastic_k_5_minmax",
+            "stochastic_d_5_minmax",
+            "stochastic_sd_5_minmax",
+            "stochastic_k_9_minmax",
+            "stochastic_d_9_minmax",
+            "stochastic_sd_9_minmax",
+            "stochastic_k_20_minmax",
+            "stochastic_d_20_minmax",
+            "stochastic_sd_20_minmax",
+            "stochastic_k_25_minmax",
+            "stochastic_d_25_minmax",
+            "stochastic_sd_25_minmax",
+            "stochastic_k_40_minmax",
+            "stochastic_d_40_minmax",
+            "stochastic_sd_40_minmax"
         ]].copy()
 
-        df["predict_target_value"] = df_simulate["day_trade_profit_rate"].shift(-1)
-        df["predict_target_label"] = df_simulate["day_trade_profit_flag"].shift(-1)
+        df["predict_target_value"] = df_simulate["profit_rate"]
+        df["predict_target_label"] = df["predict_target_value"].apply(lambda v: 1 if v > 0.0 else 0)
 
         app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
 

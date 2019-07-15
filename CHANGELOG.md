@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2019-07-15
+
+### Added
+
+- [#7147: この手法を試す…新高値更新のアルゴリズム ](https://redmine.u6k.me/issues/7147)
+- [#7202: デイトレードの単一銘柄バックテストを実装する](https://redmine.u6k.me/issues/7202)
+- [#7200: ローカル・ストレージではなくS3を使用するようにする](https://redmine.u6k.me/issues/7200)
+- [#7204: シミュレーショントレードとバックテストのファイルを統合する](https://redmine.u6k.me/issues/7204)
+
 ## [0.10.0] - 2019-07-10
 
 ### Added
