@@ -53,6 +53,70 @@ class SimulateTrade4(SimulateTradeBase):
             "message": message
         }
 
+    def backtest_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_prices_base_path, input_preprocess_base_path, input_model_base_path, output_base_path):
+        L = get_app_logger(f"backtest_singles.{ticker_symbol}")
+        L.info(f"backtest_singles: {ticker_symbol}")
+
+        hold_period = 5
+
+        try:
+            buy_price = None
+            hold_days_remain = None
+
+            # Load data
+            clf = app_s3.read_sklearn_model(s3_bucket, f"{input_model_base_path}/model.{ticker_symbol}.joblib")
+            df_prices = app_s3.read_dataframe(s3_bucket, f"{input_prices_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+            df_preprocessed = app_s3.read_dataframe(s3_bucket, f"{input_preprocess_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
+                .drop(["date", "predict_target_value", "predict_target_label"], axis=1)
+
+            # Predict
+            target_period_ids = df_prices.query(f"'{start_date}' <= date <= '{end_date}'").index
+            df_prices = df_prices.loc[target_period_ids[0]-1: target_period_ids[-1]]
+            data = df_preprocessed.loc[target_period_ids[0]-1: target_period_ids[-1]].values
+            df_prices = df_prices.assign(predict=clf.predict(data))
+
+            # Backtest
+            for id in target_period_ids:
+                # Buy
+                if buy_price is None and df_prices.at[id-1, "predict"] == 1:
+                    buy_price = df_prices.at[id, "open_price"]
+                    hold_days_remain = hold_period
+
+                    df_prices.at[id, "action"] = "buy"
+
+                # Sell
+                if hold_days_remain == 0:
+                    sell_price = df_prices.at[id, "open_price"]
+                    profit = sell_price - buy_price
+                    profit_rate = profit / sell_price
+
+                    df_prices.at[id, "action"] = "sell"
+                    df_prices.at[id, "buy_price"] = buy_price
+                    df_prices.at[id, "sell_price"] = sell_price
+                    df_prices.at[id, "profit"] = profit
+                    df_prices.at[id, "profit_rate"] = profit_rate
+
+                    buy_price = None
+                    hold_days_remain = None
+
+                # Turn end
+                if hold_days_remain is not None:
+                    hold_days_remain -= 1
+
+            app_s3.write_dataframe(df_prices, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
+
+            message = ""
+        except Exception as err:
+            L.exception(err)
+            message = err.__str__()
+
+        L.info(f"ticker_symbol={ticker_symbol}, message={message}")
+
+        return {
+            "ticker_symbol": ticker_symbol,
+            "message": message
+        }
+
 
 if __name__ == "__main__":
     s3_bucket = "u6k"
