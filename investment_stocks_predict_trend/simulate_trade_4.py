@@ -6,7 +6,12 @@ from simulate_trade_base import SimulateTradeBase
 class SimulateTrade4(SimulateTradeBase):
     def simulate_singles_impl(self, ticker_symbol, s3_bucket, input_base_path, output_base_path):
         L = get_app_logger(ticker_symbol)
-        L.info(f"simulate_trade: {ticker_symbol}")
+        L.info(f"simulate_trade_4: {ticker_symbol}")
+
+        result = {
+            "ticker_symbol": ticker_symbol,
+            "exception": None
+        }
 
         compare_high_price_period = 5
         hold_period = 5
@@ -42,20 +47,20 @@ class SimulateTrade4(SimulateTradeBase):
 
             # Save data
             app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
-
-            message = ""
         except Exception as err:
-            L.exception(err)
-            message = err.__str__()
+            L.exception(f"ticker_symbol={ticker_symbol}, {err}")
+            result["exception"] = err
 
-        return {
-            "ticker_symbol": ticker_symbol,
-            "message": message
-        }
+        return result
 
     def backtest_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_prices_base_path, input_preprocess_base_path, input_model_base_path, output_base_path):
         L = get_app_logger(f"backtest_singles.{ticker_symbol}")
-        L.info(f"backtest_singles: {ticker_symbol}")
+        L.info(f"backtest_singles_4: {ticker_symbol}")
+
+        result = {
+            "ticker_symbol": ticker_symbol,
+            "exception": None
+        }
 
         hold_period = 5
 
@@ -104,18 +109,11 @@ class SimulateTrade4(SimulateTradeBase):
                     hold_days_remain -= 1
 
             app_s3.write_dataframe(df_prices, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
-
-            message = ""
         except Exception as err:
-            L.exception(err)
-            message = err.__str__()
+            L.exception(f"ticker_symbol={ticker_symbol}, {err}")
+            result["exception"] = err
 
-        L.info(f"ticker_symbol={ticker_symbol}, message={message}")
-
-        return {
-            "ticker_symbol": ticker_symbol,
-            "message": message
-        }
+        return result
 
 
 if __name__ == "__main__":
@@ -123,4 +121,8 @@ if __name__ == "__main__":
     input_base_path = "ml-data/stocks/preprocess_1.test"
     output_base_path = "ml-data/stocks/simulate_trade_4.test"
 
-    SimulateTrade4().simulate_singles(s3_bucket, input_base_path, output_base_path)
+    SimulateTrade4().simulate_singles(
+        s3_bucket,
+        input_base_path,
+        output_base_path
+    )

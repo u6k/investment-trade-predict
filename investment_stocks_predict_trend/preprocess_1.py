@@ -24,19 +24,25 @@ def execute():
     results = joblib.Parallel(n_jobs=-1)([joblib.delayed(preprocess)(ticker_symbol, s3_bucket, input_base_path, output_base_path) for ticker_symbol in df_companies.index])
 
     for result in results:
-        ticker_symbol = result["ticker_symbol"]
+        if result["exception"] is not None:
+            continue
 
+        ticker_symbol = result["ticker_symbol"]
         df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
-        df_companies_result.at[ticker_symbol, "message"] = result["message"]
 
     app_s3.write_dataframe(df_companies_result, s3_bucket, f"{output_base_path}/companies.csv")
-    df_companies_result.to_csv("local/companies.preprocess_1.csv")
+
     L.info("finish")
 
 
 def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
-    L = get_app_logger(ticker_symbol)
-    L.info(f"ticker_symbol: {ticker_symbol}")
+    L = get_app_logger(f"preprocess_1.{ticker_symbol}")
+    L.info(f"preprocess_1: {ticker_symbol}")
+
+    result = {
+        "ticker_symbol": ticker_symbol,
+        "exception": None
+    }
 
     try:
         # Load data
@@ -51,16 +57,11 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
 
         # Save data
         app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
-
-        message = ""
     except Exception as err:
-        L.exception(err)
-        message = err.__str__()
+        L.exception(f"ticker_symbol={ticker_symbol}, {err}")
+        result["exception"] = err
 
-    return {
-        "ticker_symbol": ticker_symbol,
-        "message": message
-    }
+    return result
 
 
 if __name__ == "__main__":

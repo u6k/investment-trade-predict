@@ -26,19 +26,25 @@ def execute():
     results = joblib.Parallel(n_jobs=-1)([joblib.delayed(train_test_split)(ticker_symbol, s3_bucket, output_base_path, train_start_date, train_end_date, test_start_date, test_end_date) for ticker_symbol in df_companies.index])
 
     for result in results:
-        ticker_symbol = result["ticker_symbol"]
+        if result["exception"] is not None:
+            continue
 
+        ticker_symbol = result["ticker_symbol"]
         df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
-        df_companies_result.at[ticker_symbol, "message"] = result["message"]
 
     app_s3.write_dataframe(df_companies_result, s3_bucket, f"{output_base_path}/companies.csv")
-    df_companies_result.to_csv("local/companies.preprocess_4.csv")
+
     L.info("finish")
 
 
 def preprocess(ticker_symbol, s3_bucket, input_base_path_preprocess, input_base_path_simulate, output_base_path):
     L = get_app_logger(f"preprocess.{ticker_symbol}")
-    L.info(f"preprocess: {ticker_symbol}")
+    L.info(f"preprocess_4: {ticker_symbol}")
+
+    result = {
+        "ticker_symbol": ticker_symbol,
+        "exception": None
+    }
 
     try:
         df_preprocess = app_s3.read_dataframe(s3_bucket, f"{input_base_path_preprocess}/stock_prices.{ticker_symbol}.csv", index_col=0)
@@ -89,21 +95,21 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path_preprocess, input_base_
         df["predict_target_label"] = df_simulate["day_trade_profit_flag"].shift(-1)
 
         app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
-
-        message = ""
     except Exception as err:
-        L.exception(err)
-        message = err.__str__()
+        L.exception(f"ticker_symbol={ticker_symbol}, {err}")
+        result["exception"] = err
 
-    return {
-        "ticker_symbol": ticker_symbol,
-        "message": message
-    }
+    return result
 
 
 def train_test_split(ticker_symbol, s3_bucket, base_path, train_start_date, train_end_date, test_start_date, test_end_date):
     L = get_app_logger(f"train_test_split.{ticker_symbol}")
-    L.info(f"train_test_split: {ticker_symbol}")
+    L.info(f"train_test_split_4: {ticker_symbol}")
+
+    result = {
+        "ticker_symbol": ticker_symbol,
+        "exception": None
+    }
 
     try:
         df = app_s3.read_dataframe(s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
@@ -126,16 +132,11 @@ def train_test_split(ticker_symbol, s3_bucket, base_path, train_start_date, trai
         app_s3.write_dataframe(df_data_test, s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.data_test.csv")
         app_s3.write_dataframe(df_target_train, s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.target_train.csv")
         app_s3.write_dataframe(df_target_test, s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.target_test.csv")
-
-        message = ""
     except Exception as err:
-        L.exception(err)
-        message = err.__str__()
+        L.exception(f"ticker_symbol={ticker_symbol}, {err}")
+        result["exception"] = err
 
-    return {
-        "ticker_symbol": ticker_symbol,
-        "message": message
-    }
+    return result
 
 
 if __name__ == "__main__":

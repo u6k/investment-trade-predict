@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - [#7203: バックテスト後に各種指標をレポートする](https://redmine.u6k.me/issues/7203)
+- [#7209: 始値で購入、翌日始値で売却する売買アルゴリズムを構築してみる](https://redmine.u6k.me/issues/7209)
 
 ## [0.11.0] - 2019-07-15
 
