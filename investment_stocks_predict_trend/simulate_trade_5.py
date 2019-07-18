@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
 import pandas as pd
+from datetime import datetime
 
 from app_logging import get_app_logger
 import app_s3
@@ -104,7 +104,7 @@ class SimulateTrade5(SimulateTradeBase):
 
         fund = 100000
         asset = fund
-        available_rate = 0.1
+        available_rate = 0.05
         total_available_rate = 0.5
         fee_rate = 0.001
         tax_rate = 0.21
@@ -175,9 +175,12 @@ class SimulateTrade5(SimulateTradeBase):
                     continue
 
                 buy_price = df_prices.at[prices_id, "open_price"]
-                buy_stocks = asset * total_available_rate * available_rate // buy_price
+                buy_stocks = asset * available_rate // buy_price
 
-                if buy_stocks == 0:
+                if buy_stocks <= 0:
+                    continue
+
+                if (fund - buy_price * buy_stocks) < (asset * total_available_rate):
                     continue
 
                 fund -= buy_price * buy_stocks
@@ -227,10 +230,6 @@ class SimulateTrade5(SimulateTradeBase):
         app_s3.write_dataframe(df_result, s3_bucket, f"{base_path}/backtest_all.result.csv")
 
         L.info("finish")
-
-    def date_range(self, start, end):
-        for n in range((end - start).days):
-            yield start + timedelta(n)
 
 
 if __name__ == "__main__":
