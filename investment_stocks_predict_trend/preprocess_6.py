@@ -10,9 +10,9 @@ def execute():
     L.info("start")
 
     s3_bucket = "u6k"
-    input_base_path_preprocess = "ml-data/stocks/preprocess_2.20190717"
-    input_base_path_simulate = "ml-data/stocks/simulate_trade_5.20190717"
-    output_base_path = "ml-data/stocks/preprocess_6.20190717"
+    input_base_path_preprocess = "ml-data/stocks/preprocess_2.test"
+    input_base_path_simulate = "ml-data/stocks/simulate_trade_5.test"
+    output_base_path = "ml-data/stocks/preprocess_6.test"
 
     train_start_date = "2008-01-01"
     train_end_date = "2017-12-31"

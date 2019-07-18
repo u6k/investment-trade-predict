@@ -84,8 +84,8 @@ class SimulateTrade5(SimulateTradeBase):
 
 if __name__ == "__main__":
     s3_bucket = "u6k"
-    input_base_path = "ml-data/stocks/preprocess_1.20190717"
-    output_base_path = "ml-data/stocks/simulate_trade_5.20190717"
+    input_base_path = "ml-data/stocks/preprocess_1.test"
+    output_base_path = "ml-data/stocks/simulate_trade_5.test"
 
     SimulateTrade5().simulate_singles(
         s3_bucket,

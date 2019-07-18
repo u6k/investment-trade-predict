@@ -3,10 +3,10 @@ from simulate_trade_5 import SimulateTrade5
 
 if __name__ == "__main__":
     s3_bucket = "u6k"
-    input_prices_base_path = "ml-data/stocks/preprocess_1.20190717"
-    input_preprocess_base_path = "ml-data/stocks/preprocess_6.20190717"
-    input_model_base_path = "ml-data/stocks/predict_3_preprocess_6.20190717"
-    output_base_path = "ml-data/stocks/simulate_trade_5_backtest.20190717"
+    input_prices_base_path = "ml-data/stocks/preprocess_1.test"
+    input_preprocess_base_path = "ml-data/stocks/preprocess_6.test"
+    input_model_base_path = "ml-data/stocks/predict_3_preprocess_6.test"
+    output_base_path = "ml-data/stocks/simulate_trade_5_backtest.test"
 
     start_date = "2018-01-01"
     end_date = "2018-12-31"
