@@ -1,3 +1,4 @@
+from datetime import timedelta
 import joblib
 import pandas as pd
 
@@ -121,3 +122,7 @@ class SimulateTradeBase():
             result["exception"] = err
 
         return result
+
+    def date_range(self, start, end):
+        for n in range((end - start).days):
+            yield start + timedelta(n)
