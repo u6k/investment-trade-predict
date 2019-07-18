@@ -193,6 +193,7 @@ class SimulateTrade3(SimulateTradeBase):
 
         L.info("finish")
 
+
 if __name__ == "__main__":
     s3_bucket = "u6k"
     input_base_path = "ml-data/stocks/preprocess_1.test"
