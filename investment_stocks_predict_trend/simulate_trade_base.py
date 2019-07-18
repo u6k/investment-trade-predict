@@ -86,7 +86,7 @@ class SimulateTradeBase():
         try:
             df = app_s3.read_dataframe(s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-            if not "profit" in df.columns:
+            if "profit" not in df.columns:
                 raise Exception("no trade")
 
             result["trade_count"] = len(df.query("not profit.isnull()"))
