@@ -101,22 +101,13 @@ class SimulateTradeBase():
             result["close_price_latest"] = df["close_price"].values[-1]
             result["volume_average"] = df["volume"].mean()
             result["expected_value"] = df["profit_rate"].mean()
+            result["risk"] = df["profit_rate"].std()
             result["profit_total"] = df.query("profit>0")["profit"].sum()
             result["loss_total"] = df.query("profit<=0")["profit"].sum()
             result["profit_factor"] = result["profit_total"] / abs(result["loss_total"])
             result["profit_average"] = df.query("profit>0")["profit"].mean()
             result["loss_average"] = df.query("profit<=0")["profit"].mean()
             result["payoff_ratio"] = result["profit_average"] / abs(result["loss_average"])
-
-            asset = 1000000
-            for id in df.query("not profit.isnull()").index:
-                asset += asset * df.at[id, "profit_rate"]
-                df.at[id, "asset"] = asset
-            for id in df.query("not profit.isnull()").index[: -1]:
-                df.at[id, "min_asset"] = df.query(f"id > {id}")["asset"].min()
-                df.at[id, "drawdown"] = (df.at[id, "asset"] - df.at[id, "min_asset"]) / df.at[id, "asset"]
-
-            result["max_drawdown"] = df["drawdown"].max()
         except Exception as err:
             L.exception(f"ticker_symbol={ticker_symbol}, {err}")
             result["exception"] = err
