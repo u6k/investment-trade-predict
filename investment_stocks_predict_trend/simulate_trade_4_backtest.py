@@ -25,3 +25,8 @@ if __name__ == "__main__":
         s3_bucket,
         output_base_path
     )
+
+    SimulateTrade4().backtest_all(
+        s3_bucket,
+        output_base_path
+    )
