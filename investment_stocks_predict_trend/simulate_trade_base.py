@@ -108,6 +108,7 @@ class SimulateTradeBase():
             result["profit_average"] = df.query("profit>0")["profit"].mean()
             result["loss_average"] = df.query("profit<=0")["profit"].mean()
             result["payoff_ratio"] = result["profit_average"] / abs(result["loss_average"])
+            result["sharpe_ratio"] = result["expected_value"] / result["risk"]
         except Exception as err:
             L.exception(f"ticker_symbol={ticker_symbol}, {err}")
             result["exception"] = err
