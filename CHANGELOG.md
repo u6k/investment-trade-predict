@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#7209: 始値で購入、翌日始値で売却する売買アルゴリズムを構築してみる](https://redmine.u6k.me/issues/7209)
 - [#7210: 全銘柄を対象としたバックテストを行う](https://redmine.u6k.me/issues/7210)
 - [#7212: レポートにリスク(標準偏差)を追加する](https://redmine.u6k.me/issues/7212)
+- [#7198: 移動平均交差法で売買シミュレーションを行い、勝つ買いシグナルを学習してみる](https://redmine.u6k.me/issues/7198)
 
 ## [0.11.0] - 2019-07-15
 
