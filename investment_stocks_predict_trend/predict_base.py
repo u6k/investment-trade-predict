@@ -9,7 +9,6 @@ import app_s3
 
 class PredictClassificationBase():
     def __init__(self, **kwargs):
-        self._model_target_ticker_symbols = kwargs["model_target_ticker_symbols"]
         self._train_start_date = kwargs["train_start_date"]
         self._train_end_date = kwargs["train_end_date"]
         self._test_start_date = kwargs["test_start_date"]
@@ -118,7 +117,7 @@ class PredictClassificationBase():
         df_companies = app_s3.read_dataframe(self._s3_bucket, f"{self._input_preprocess_base_path}/companies.csv", index_col=0)
         df_result = pd.DataFrame(columns=df_companies.columns)
 
-        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.train_impl)(ticker_symbol) for ticker_symbol in self._model_target_ticker_symbols])
+        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.train_impl)(ticker_symbol) for ticker_symbol in df_companies.index])
 
         for result in results:
             if result["exception"] is not None:

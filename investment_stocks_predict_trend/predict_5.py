@@ -11,12 +11,12 @@ class PredictClassification_5(PredictClassificationBase):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--task", help="preprocess, or train")
     parser.add_argument("--simulate-group", help="simulate trade group")
     parser.add_argument("--suffix", help="folder name suffix (default: test)", default="test")
     args = parser.parse_args()
 
     pred = PredictClassification_5(
-        model_target_ticker_symbols=["ni225", "topix", "djia"],
         train_start_date="2008-01-01",
         train_end_date="2017-12-31",
         test_start_date="2018-01-01",
@@ -27,5 +27,9 @@ if __name__ == "__main__":
         output_base_path=f"ml-data/stocks/predict_5.simulate_trade_{args.simulate_group}.{args.suffix}"
     )
 
-    pred.preprocess()
-    pred.train()
+    if args.task == "preprocess":
+        pred.preprocess()
+    elif args.task == "train":
+        pred.train()
+    else:
+        parser.print_help()

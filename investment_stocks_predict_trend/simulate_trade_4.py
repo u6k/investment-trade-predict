@@ -57,7 +57,7 @@ class SimulateTrade4(SimulateTradeBase):
 
         return result
 
-    def backtest_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_path, output_base_path):
+    def backtest_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_base_path, output_base_path):
         L = get_app_logger(f"backtest_singles_impl.{ticker_symbol}")
         L.info(f"backtest_singles_4: {ticker_symbol}")
 
@@ -69,11 +69,8 @@ class SimulateTrade4(SimulateTradeBase):
         hold_period = 5
 
         try:
-            if ticker_symbol in ["ni225", "topix", "djia"]:
-                raise Exception("skip")
-
             # Load data
-            clf = app_s3.read_sklearn_model(s3_bucket, input_model_path)
+            clf = app_s3.read_sklearn_model(s3_bucket, f"{input_model_base_path}/model.{ticker_symbol}.joblib")
             df = app_s3.read_dataframe(s3_bucket, f"{input_preprocess_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
             df_prices = df[["date", "open_price", "high_price", "low_price", "close_price", "adjusted_close_price", "volume"]].copy()
@@ -296,7 +293,7 @@ if __name__ == "__main__":
             end_date="2018-12-31",
             s3_bucket="u6k",
             input_preprocess_base_path=f"ml-data/stocks/predict_3.simulate_trade_4.{args.suffix}",
-            input_model_path=f"ml-data/stocks/predict_3.simulate_trade_4.{args.suffix}/model.ni225.joblib",
+            input_model_base_path=f"ml-data/stocks/predict_3.simulate_trade_4.{args.suffix}",
             output_base_path=f"ml-data/stocks/simulate_trade_4_backtest.{args.suffix}"
         )
 
