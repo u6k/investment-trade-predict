@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#7198: 移動平均交差法で売買シミュレーションを行い、勝つ買いシグナルを学習してみる](https://redmine.u6k.me/issues/7198)
 - [#7217: レポートにシャープ・レシオを追加する](https://redmine.u6k.me/issues/7217)
 - [#7132: 日経平均やTOPIXなどの株価指数で学習したモデルでバックテストを行ってみる](https://redmine.u6k.me/issues/7132)
+- [#7223: 全バックテストで、buyやfeeもprofitを算出する](https://redmine.u6k.me/issues/7223)
 
 ## [0.11.0] - 2019-07-15
 
