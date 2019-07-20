@@ -150,6 +150,7 @@ class SimulateTrade5(SimulateTradeBase):
                 df_action.at[action_id, "action"] = "fee"
                 df_action.at[action_id, "price"] = fee_price
                 df_action.at[action_id, "stocks"] = 1
+                df_action.at[action_id, "profit"] = -1 * fee_price
 
                 if profit > 0:
                     tax_price = profit * tax_rate
@@ -161,6 +162,7 @@ class SimulateTrade5(SimulateTradeBase):
                     df_action.at[action_id, "action"] = "tax"
                     df_action.at[action_id, "price"] = tax_price
                     df_action.at[action_id, "stocks"] = 1
+                    df_action.at[action_id, "profit"] = -1 * tax_price
 
                 df_stocks = df_stocks.drop(ticker_symbol)
 
@@ -203,6 +205,7 @@ class SimulateTrade5(SimulateTradeBase):
                 df_action.at[action_id, "action"] = "fee"
                 df_action.at[action_id, "price"] = fee_price
                 df_action.at[action_id, "stocks"] = 1
+                df_action.at[action_id, "profit"] = -1 * fee_price
 
                 df_stocks.at[ticker_symbol, "buy_price"] = buy_price
                 df_stocks.at[ticker_symbol, "buy_stocks"] = buy_stocks
