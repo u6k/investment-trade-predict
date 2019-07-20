@@ -1,16 +1,16 @@
 import argparse
-from datetime import datetime
 import pandas as pd
+from datetime import datetime
 
 from app_logging import get_app_logger
 import app_s3
 from simulate_trade_base import SimulateTradeBase
 
 
-class SimulateTrade3(SimulateTradeBase):
+class SimulateTrade5(SimulateTradeBase):
     def simulate_singles_impl(self, ticker_symbol, s3_bucket, input_base_path, output_base_path):
         L = get_app_logger(f"simulate_singles_impl.{ticker_symbol}")
-        L.info(f"simulate_trade_3: {ticker_symbol}")
+        L.info(f"simulate_trade_5: {ticker_symbol}")
 
         result = {
             "ticker_symbol": ticker_symbol,
@@ -20,8 +20,10 @@ class SimulateTrade3(SimulateTradeBase):
         try:
             df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-            df["profit"] = df["close_price"] - df["open_price"]
-            df["profit_rate"] = df["profit"] / df["close_price"]
+            df["buy_price"] = df["open_price"].shift(-1)
+            df["sell_price"] = df["open_price"].shift(-2)
+            df["profit"] = df["sell_price"] - df["buy_price"]
+            df["profit_rate"] = df["profit"] / df["sell_price"]
 
             app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
         except Exception as err:
@@ -32,7 +34,7 @@ class SimulateTrade3(SimulateTradeBase):
 
     def backtest_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_base_path, output_base_path):
         L = get_app_logger(f"backtest_singles_impl.{ticker_symbol}")
-        L.info(f"backtest_singles_3: {ticker_symbol}")
+        L.info(f"backtest_singles_5: {ticker_symbol}")
 
         result = {
             "ticker_symbol": ticker_symbol,
@@ -54,19 +56,28 @@ class SimulateTrade3(SimulateTradeBase):
             df_prices = df_prices.assign(predict=clf.predict(data))
 
             # Backtest
+            buy_price = None
+
             for id in target_period_ids:
-                # Trade
-                if df_prices.at[id-1, "predict"] == 1:
-                    buy_price = df_prices.at[id, "open_price"]
-                    sell_price = df_prices.at[id, "close_price"]
+                # Sell
+                if buy_price is not None:
+                    sell_price = df_prices.at[id, "open_price"]
                     profit = sell_price - buy_price
                     profit_rate = profit / sell_price
 
-                    df_prices.at[id, "action"] = "trade"
+                    df_prices.at[id, "action"] = "sell"
                     df_prices.at[id, "buy_price"] = buy_price
                     df_prices.at[id, "sell_price"] = sell_price
                     df_prices.at[id, "profit"] = profit
                     df_prices.at[id, "profit_rate"] = profit_rate
+
+                    buy_price = None
+
+                # Buy
+                if buy_price is None and df_prices.at[id-1, "predict"] == 1:
+                    buy_price = df_prices.at[id, "open_price"]
+
+                    df_prices.at[id, "action"] = "buy"
 
             app_s3.write_dataframe(df_prices, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
         except Exception as err:
@@ -83,12 +94,13 @@ class SimulateTrade3(SimulateTradeBase):
         end_date = datetime(2019, 1, 1)
 
         df_action = pd.DataFrame(columns=["date", "ticker_symbol", "action", "price", "stocks", "profit", "profit_rate"])
+        df_stocks = pd.DataFrame(columns=["buy_price", "buy_stocks", "open_price_latest"])
         df_result = pd.DataFrame(columns=["fund", "asset"])
 
         df_report = app_s3.read_dataframe(s3_bucket, f"{base_path}/report.csv", index_col=0)
 
         df_prices_dict = {}
-        for ticker_symbol in df_report.query("trade_count>50 and profit_factor>2.0").sort_values("expected_value", ascending=False).index:
+        for ticker_symbol in df_report.query("expected_value>0.01 and trade_count>30").sort_values("expected_value", ascending=False).index:
             L.info(f"load data: {ticker_symbol}")
             df_prices_dict[ticker_symbol] = app_s3.read_dataframe(s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
@@ -103,50 +115,17 @@ class SimulateTrade3(SimulateTradeBase):
             date_str = date.strftime("%Y-%m-%d")
             L.info(f"backtest_all: {date_str}")
 
-            # Trade
-            for ticker_symbol in df_prices_dict.keys():
+            # Sell
+            for ticker_symbol in df_stocks.index:
                 df_prices = df_prices_dict[ticker_symbol]
 
                 if len(df_prices.query(f"date=='{date_str}'")) == 0:
                     continue
 
-                prices_id = df_prices.query(f"date=='{date_str}'").index[0]
+                sell_price = df_prices.query(f"date=='{date_str}'")["open_price"].values[0]
 
-                if df_prices.at[prices_id, "action"] != "trade":
-                    continue
-
-                # Buy
-                buy_price = df_prices.at[prices_id, "open_price"]
-                buy_stocks = asset * available_rate // buy_price
-
-                if buy_stocks <= 0:
-                    continue
-
-                if (fund - buy_price * buy_stocks) < (asset * total_available_rate):
-                    continue
-
-                fund -= buy_price * buy_stocks
-
-                action_id = len(df_action)
-                df_action.at[action_id, "date"] = date_str
-                df_action.at[action_id, "ticker_symbol"] = ticker_symbol
-                df_action.at[action_id, "action"] = "buy"
-                df_action.at[action_id, "price"] = buy_price
-                df_action.at[action_id, "stocks"] = buy_stocks
-
-                fee_price = (buy_price * buy_stocks) * fee_rate
-                fund -= fee_price
-
-                action_id = len(df_action)
-                df_action.at[action_id, "date"] = date_str
-                df_action.at[action_id, "ticker_symbol"] = ticker_symbol
-                df_action.at[action_id, "action"] = "fee"
-                df_action.at[action_id, "price"] = fee_price
-                df_action.at[action_id, "stocks"] = 1
-                df_action.at[action_id, "profit"] = -1 * fee_price
-
-                # Sell
-                sell_price = df_prices.at[prices_id, "close_price"]
+                buy_price = df_stocks.at[ticker_symbol, "buy_price"]
+                buy_stocks = df_stocks.at[ticker_symbol, "buy_stocks"]
 
                 profit = (sell_price - buy_price) * buy_stocks
                 profit_rate = profit / (sell_price * buy_stocks)
@@ -185,8 +164,67 @@ class SimulateTrade3(SimulateTradeBase):
                     df_action.at[action_id, "stocks"] = 1
                     df_action.at[action_id, "profit"] = -1 * tax_price
 
+                df_stocks = df_stocks.drop(ticker_symbol)
+
+            # Buy
+            for ticker_symbol in df_prices_dict.keys():
+                df_prices = df_prices_dict[ticker_symbol]
+
+                if len(df_prices.query(f"date=='{date_str}'")) == 0:
+                    continue
+
+                prices_id = df_prices.query(f"date=='{date_str}'").index[0]
+
+                if df_prices.at[prices_id, "action"] != "buy":
+                    continue
+
+                buy_price = df_prices.at[prices_id, "open_price"]
+                buy_stocks = asset * available_rate // buy_price
+
+                if buy_stocks <= 0:
+                    continue
+
+                if (fund - buy_price * buy_stocks) < (asset * total_available_rate):
+                    continue
+
+                fund -= buy_price * buy_stocks
+
+                action_id = len(df_action)
+                df_action.at[action_id, "date"] = date_str
+                df_action.at[action_id, "ticker_symbol"] = ticker_symbol
+                df_action.at[action_id, "action"] = "buy"
+                df_action.at[action_id, "price"] = buy_price
+                df_action.at[action_id, "stocks"] = buy_stocks
+
+                fee_price = (buy_price * buy_stocks) * fee_rate
+                fund -= fee_price
+
+                action_id = len(df_action)
+                df_action.at[action_id, "date"] = date_str
+                df_action.at[action_id, "ticker_symbol"] = ticker_symbol
+                df_action.at[action_id, "action"] = "fee"
+                df_action.at[action_id, "price"] = fee_price
+                df_action.at[action_id, "stocks"] = 1
+                df_action.at[action_id, "profit"] = -1 * fee_price
+
+                df_stocks.at[ticker_symbol, "buy_price"] = buy_price
+                df_stocks.at[ticker_symbol, "buy_stocks"] = buy_stocks
+                df_stocks.at[ticker_symbol, "open_price_latest"] = buy_price
+
             # Turn end
+            for ticker_symbol in df_stocks.index:
+                df_prices = df_prices_dict[ticker_symbol]
+
+                if len(df_prices.query(f"date=='{date_str}'")) == 0:
+                    continue
+
+                prices_id = df_prices.query(f"date=='{date_str}'").index[0]
+
+                df_stocks.at[ticker_symbol, "open_price_latest"] = df_prices.at[prices_id, "open_price"]
+
             asset = fund
+            for ticker_symbol in df_stocks.index:
+                asset += df_stocks.at[ticker_symbol, "open_price_latest"] * df_stocks.at[ticker_symbol, "buy_stocks"]
 
             df_result.at[date_str, "fund"] = fund
             df_result.at[date_str, "asset"] = asset
@@ -206,29 +244,29 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.task == "simulate":
-        SimulateTrade3().simulate_singles(
+        SimulateTrade5().simulate_singles(
             s3_bucket="u6k",
             input_base_path=f"ml-data/stocks/preprocess_1.{args.suffix}",
-            output_base_path=f"ml-data/stocks/simulate_trade_3.{args.suffix}"
+            output_base_path=f"ml-data/stocks/simulate_trade_5.{args.suffix}"
         )
     elif args.task == "backtest":
-        SimulateTrade3().backtest_singles(
+        SimulateTrade5().backtest_singles(
             start_date="2018-01-01",
             end_date="2018-12-31",
             s3_bucket="u6k",
-            input_preprocess_base_path=f"ml-data/stocks/predict_3.simulate_trade_3.{args.suffix}",
-            input_model_base_path=f"ml-data/stocks/predict_3.simulate_trade_3.{args.suffix}",
-            output_base_path=f"ml-data/stocks/simulate_trade_3_backtest.{args.suffix}"
+            input_preprocess_base_path=f"ml-data/stocks/predict_3.simulate_trade_5.{args.suffix}",
+            input_model_base_path=f"ml-data/stocks/predict_3.simulate_trade_5.{args.suffix}",
+            output_base_path=f"ml-data/stocks/simulate_trade_5_backtest.{args.suffix}"
         )
 
-        SimulateTrade3().report_singles(
+        SimulateTrade5().report_singles(
             s3_bucket="u6k",
-            base_path=f"ml-data/stocks/simulate_trade_3_backtest.{args.suffix}"
+            base_path=f"ml-data/stocks/simulate_trade_5_backtest.{args.suffix}"
         )
     elif args.task == "backtest_all":
-        SimulateTrade3().backtest_all(
+        SimulateTrade5().backtest_all(
             s3_bucket="u6k",
-            base_path=f"ml-data/stocks/simulate_trade_3_backtest.{args.suffix}"
+            base_path=f"ml-data/stocks/simulate_trade_5_backtest.{args.suffix}"
         )
     else:
         parser.print_help()

@@ -1,3 +1,4 @@
+import argparse
 import joblib
 import pandas as pd
 import numpy as np
@@ -7,13 +8,9 @@ from app_logging import get_app_logger
 import app_s3
 
 
-def execute():
+def execute(*, s3_bucket, input_base_path, output_base_path):
     L = get_app_logger()
     L.info("start")
-
-    s3_bucket = "u6k"
-    input_base_path = "ml-data/stocks/preprocess_1.test"
-    output_base_path = "ml-data/stocks/preprocess_2.test"
 
     df_companies = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/companies.csv", index_col=0)
     df_companies_result = pd.DataFrame(columns=df_companies.columns)
@@ -21,19 +18,25 @@ def execute():
     results = joblib.Parallel(n_jobs=-1)([joblib.delayed(preprocess)(ticker_symbol, s3_bucket, input_base_path, output_base_path) for ticker_symbol in df_companies.index])
 
     for result in results:
-        ticker_symbol = result["ticker_symbol"]
+        if result["exception"] is not None:
+            continue
 
+        ticker_symbol = result["ticker_symbol"]
         df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
-        df_companies_result.at[ticker_symbol, "message"] = result["message"]
 
     app_s3.write_dataframe(df_companies_result, s3_bucket, f"{output_base_path}/companies.csv")
-    df_companies_result.to_csv("local/companies.preprocess_2.csv")
+
     L.info("finish")
 
 
 def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
-    L = get_app_logger(ticker_symbol)
-    L.info(f"ticker_symbol: {ticker_symbol}")
+    L = get_app_logger(f"preprocess_2.{ticker_symbol}")
+    L.info(f"preprocess_2: {ticker_symbol}")
+
+    result = {
+        "ticker_symbol": ticker_symbol,
+        "exception": None
+    }
 
     try:
         df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
@@ -212,17 +215,20 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
 
         # Save
         app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
-
-        message = ""
     except Exception as err:
-        L.exception(err)
-        message = err.__str__()
+        L.exception(f"ticker_symbol={ticker_symbol}, {err}")
+        result["exception"] = err
 
-    return {
-        "ticker_symbol": ticker_symbol,
-        "message": message
-    }
+    return result
 
 
 if __name__ == "__main__":
-    execute()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--suffix", help="folder name suffix (default: test)", default="test")
+    args = parser.parse_args()
+
+    execute(
+        s3_bucket="u6k",
+        input_base_path=f"ml-data/stocks/preprocess_1.{args.suffix}",
+        output_base_path=f"ml-data/stocks/preprocess_2.{args.suffix}",
+    )
