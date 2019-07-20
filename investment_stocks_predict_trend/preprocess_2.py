@@ -1,3 +1,4 @@
+import argparse
 import joblib
 import pandas as pd
 import numpy as np
@@ -7,13 +8,9 @@ from app_logging import get_app_logger
 import app_s3
 
 
-def execute():
+def execute(*, s3_bucket, input_base_path, output_base_path):
     L = get_app_logger()
     L.info("start")
-
-    s3_bucket = "u6k"
-    input_base_path = "ml-data/stocks/preprocess_1.test"
-    output_base_path = "ml-data/stocks/preprocess_2.test"
 
     df_companies = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/companies.csv", index_col=0)
     df_companies_result = pd.DataFrame(columns=df_companies.columns)
@@ -226,4 +223,12 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
 
 
 if __name__ == "__main__":
-    execute()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--suffix", help="folder name suffix (default: test)", default="test")
+    args = parser.parse_args()
+
+    execute(
+        s3_bucket="u6k",
+        input_base_path=f"ml-data/stocks/preprocess_1.{args.suffix}",
+        output_base_path=f"ml-data/stocks/preprocess_2.{args.suffix}",
+    )

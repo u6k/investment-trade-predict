@@ -1,3 +1,4 @@
+import argparse
 from datetime import datetime
 import pandas as pd
 
@@ -8,7 +9,7 @@ from simulate_trade_base import SimulateTradeBase
 
 class SimulateTrade6(SimulateTradeBase):
     def simulate_singles_impl(self, ticker_symbol, s3_bucket, input_base_path, output_base_path):
-        L = get_app_logger(ticker_symbol)
+        L = get_app_logger(f"simulate_singles_impl.{ticker_symbol}")
         L.info(f"simulate_trade_6: {ticker_symbol}")
 
         result = {
@@ -59,8 +60,8 @@ class SimulateTrade6(SimulateTradeBase):
 
         return result
 
-    def backtest_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_prices_base_path, input_preprocess_base_path, input_model_base_path, output_base_path):
-        L = get_app_logger(f"backtest_singles.{ticker_symbol}")
+    def backtest_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_path, output_base_path):
+        L = get_app_logger(f"backtest_singles_impl.{ticker_symbol}")
         L.info(f"backtest_singles_6: {ticker_symbol}")
 
         result = {
@@ -69,11 +70,15 @@ class SimulateTrade6(SimulateTradeBase):
         }
 
         try:
+            if ticker_symbol in ["ni225", "topix", "djia"]:
+                raise Exception("skip")
+
             # Load data
-            clf = app_s3.read_sklearn_model(s3_bucket, f"{input_model_base_path}/model.{ticker_symbol}.joblib")
-            df_prices = app_s3.read_dataframe(s3_bucket, f"{input_prices_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
-            df_preprocessed = app_s3.read_dataframe(s3_bucket, f"{input_preprocess_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
-                .drop(["date", "predict_target_value", "predict_target_label"], axis=1)
+            clf = app_s3.read_sklearn_model(s3_bucket, input_model_path)
+            df = app_s3.read_dataframe(s3_bucket, f"{input_preprocess_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+
+            df_prices = df[["date", "open_price", "high_price", "low_price", "close_price", "adjusted_close_price", "volume"]].copy()
+            df_preprocessed = df.drop(["date", "open_price", "high_price", "low_price", "close_price", "adjusted_close_price", "volume", "predict_target"], axis=1)
 
             # Preprocess
             sma_len_array = [5, 10]
@@ -128,7 +133,7 @@ class SimulateTrade6(SimulateTradeBase):
         return result
 
     def backtest_all(self, s3_bucket, base_path):
-        L = get_app_logger()
+        L = get_app_logger("backtest_all")
         L.info("start")
 
         # Load data
@@ -285,12 +290,35 @@ class SimulateTrade6(SimulateTradeBase):
 
 
 if __name__ == "__main__":
-    s3_bucket = "u6k"
-    input_base_path = "ml-data/stocks/preprocess_1.test"
-    output_base_path = "ml-data/stocks/simulate_trade_6.test"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--task", help="simulate, backtest, or backtest_all")
+    parser.add_argument("--suffix", help="folder name suffix (default: test)", default="test")
+    args = parser.parse_args()
 
-    SimulateTrade6().simulate_singles(
-        s3_bucket,
-        input_base_path,
-        output_base_path
-    )
+    if args.task == "simulate":
+        SimulateTrade6().simulate_singles(
+            s3_bucket="u6k",
+            input_base_path=f"ml-data/stocks/preprocess_1.{args.suffix}",
+            output_base_path=f"ml-data/stocks/simulate_trade_6.{args.suffix}"
+        )
+    elif args.task == "backtest":
+        SimulateTrade6().backtest_singles(
+            start_date="2018-01-01",
+            end_date="2018-12-31",
+            s3_bucket="u6k",
+            input_preprocess_base_path=f"ml-data/stocks/predict_3.simulate_trade_6.{args.suffix}",
+            input_model_path=f"ml-data/stocks/predict_3.simulate_trade_6.{args.suffix}/model.ni225.joblib",
+            output_base_path=f"ml-data/stocks/simulate_trade_6_backtest.{args.suffix}"
+        )
+
+        SimulateTrade6().report_singles(
+            s3_bucket="u6k",
+            base_path=f"ml-data/stocks/simulate_trade_6_backtest.{args.suffix}"
+        )
+    elif args.task == "backtest_all":
+        SimulateTrade6().backtest_all(
+            s3_bucket="u6k",
+            base_path=f"ml-data/stocks/simulate_trade_6_backtest.{args.suffix}"
+        )
+    else:
+        parser.print_help()

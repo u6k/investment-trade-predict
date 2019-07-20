@@ -7,8 +7,8 @@ import app_s3
 
 
 class SimulateTradeBase():
-    def simulate_singles(self, s3_bucket, input_base_path, output_base_path):
-        L = get_app_logger()
+    def simulate_singles(self, *, s3_bucket, input_base_path, output_base_path):
+        L = get_app_logger("simulate_singles")
         L.info("start")
 
         df_companies = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/companies.csv", index_col=0)
@@ -30,34 +30,34 @@ class SimulateTradeBase():
     def simulate_singles_impl(self, ticker_symbol, s3_bucket, input_base_path, output_base_path):
         raise Exception("Not implemented.")
 
-    def backtest_singles(self, start_date, end_date, s3_bucket, input_prices_base_path, input_preprocess_base_path, input_model_base_path, output_base_path):
-        L = get_app_logger()
+    def backtest_singles(self, *, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_path, output_base_path):
+        L = get_app_logger("backtest_singles")
         L.info("start")
 
-        df_companies = app_s3.read_dataframe(s3_bucket, f"{input_prices_base_path}/companies.csv", index_col=0)
-        df_companies_result = pd.DataFrame(columns=df_companies.columns)
+        df_companies = app_s3.read_dataframe(s3_bucket, f"{input_preprocess_base_path}/companies.csv", index_col=0)
+        df_result = pd.DataFrame(columns=df_companies.columns)
 
-        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.backtest_singles_impl)(ticker_symbol, start_date, end_date, s3_bucket, input_prices_base_path, input_preprocess_base_path, input_model_base_path, output_base_path) for ticker_symbol in df_companies.index])
+        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.backtest_singles_impl)(ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_path, output_base_path) for ticker_symbol in df_companies.index])
 
         for result in results:
             if result["exception"] is not None:
                 continue
 
             ticker_symbol = result["ticker_symbol"]
-            df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
+            df_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
 
-        app_s3.write_dataframe(df_companies_result, s3_bucket, f"{output_base_path}/companies.csv")
+        app_s3.write_dataframe(df_result, s3_bucket, f"{output_base_path}/companies.csv")
         L.info("finish")
 
-    def backtest_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_prices_base_path, input_preprocess_base_path, input_model_base_path, output_base_path):
+    def backtest_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_path, output_base_path):
         raise Exception("Not implemented.")
 
-    def report_singles(self, s3_bucket, base_path):
-        L = get_app_logger()
+    def report_singles(self, *, s3_bucket, base_path):
+        L = get_app_logger("report_singles")
         L.info("start")
 
         df_companies = app_s3.read_dataframe(s3_bucket, f"{base_path}/companies.csv", index_col=0)
-        df_companies_result = pd.DataFrame(columns=df_companies.columns)
+        df_result = pd.DataFrame(columns=df_companies.columns)
 
         results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.report_singles_impl)(ticker_symbol, s3_bucket, base_path) for ticker_symbol in df_companies.index])
 
@@ -66,17 +66,17 @@ class SimulateTradeBase():
                 continue
 
             ticker_symbol = result["ticker_symbol"]
-            df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
+            df_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
 
             for k in result.keys():
                 if k != "ticker_symbol" and k != "exception":
-                    df_companies_result.at[ticker_symbol, k] = result[k]
+                    df_result.at[ticker_symbol, k] = result[k]
 
-        app_s3.write_dataframe(df_companies_result, s3_bucket, f"{base_path}/report.csv")
+        app_s3.write_dataframe(df_result, s3_bucket, f"{base_path}/report.csv")
         L.info("finish")
 
     def report_singles_impl(self, ticker_symbol, s3_bucket, base_path):
-        L = get_app_logger(f"report_singles.{ticker_symbol}")
+        L = get_app_logger(f"report_singles_impl.{ticker_symbol}")
         L.info(f"report_singles: {ticker_symbol}")
 
         result = {
