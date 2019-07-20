@@ -1,26 +1,35 @@
+import argparse
+
 from sklearn import ensemble
 from predict_base import PredictClassificationBase
 
 
 class PredictClassification_3(PredictClassificationBase):
-    def execute(self):
-        s3_bucket = "u6k"
-        input_base_path = "ml-data/stocks/preprocess_5.test"
-        output_base_path = "ml-data/stocks/predict_3_preprocess_5.test"
-
-        self.train(s3_bucket, input_base_path, output_base_path)
-
-    def preprocess(self, df_data_train, df_data_test, df_target_train, df_target_test):
-        x_train = df_data_train.values
-        x_test = df_data_test.values
-        y_train = df_target_train["predict_target_label"].values
-        y_test = df_target_test["predict_target_label"].values
-
-        return x_train, x_test, y_train, y_test
-
     def model_fit(self, x_train, y_train):
         return ensemble.RandomForestClassifier(n_estimators=200).fit(x_train, y_train)
 
 
 if __name__ == "__main__":
-    PredictClassification_3().execute()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--task", help="preprocess, or train")
+    parser.add_argument("--simulate-group", help="simulate trade group")
+    parser.add_argument("--suffix", help="folder name suffix (default: test)", default="test")
+    args = parser.parse_args()
+
+    pred = PredictClassification_3(
+        train_start_date="2008-01-01",
+        train_end_date="2017-12-31",
+        test_start_date="2018-01-01",
+        test_end_date="2018-12-31",
+        s3_bucket="u6k",
+        input_preprocess_base_path=f"ml-data/stocks/preprocess_2.{args.suffix}",
+        input_simulate_base_path=f"ml-data/stocks/simulate_trade_{args.simulate_group}.{args.suffix}",
+        output_base_path=f"ml-data/stocks/predict_3.simulate_trade_{args.simulate_group}.{args.suffix}"
+    )
+
+    if args.task == "preprocess":
+        pred.preprocess()
+    elif args.task == "train":
+        pred.train()
+    else:
+        parser.print_help()
