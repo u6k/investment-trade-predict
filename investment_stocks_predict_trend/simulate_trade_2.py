@@ -53,9 +53,9 @@ class SimulateTrade2(SimulateTradeBase):
 
         return result
 
-    def backtest_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_base_path, output_base_path):
-        L = get_app_logger(f"backtest_singles_impl.{ticker_symbol}")
-        L.info(f"backtest_singles_2: {ticker_symbol}")
+    def test_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_base_path, output_base_path):
+        L = get_app_logger(f"test_singles_impl.{ticker_symbol}")
+        L.info(f"test_singles_2: {ticker_symbol}")
 
         result = {
             "ticker_symbol": ticker_symbol,
@@ -120,7 +120,7 @@ class SimulateTrade2(SimulateTradeBase):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", help="simulate, or backtest")
+    parser.add_argument("--task", help="simulate, or test")
     parser.add_argument("--suffix", help="folder name suffix (default: test)", default="test")
     args = parser.parse_args()
 
@@ -130,19 +130,19 @@ if __name__ == "__main__":
             input_base_path=f"ml-data/stocks/preprocess_1.{args.suffix}",
             output_base_path=f"ml-data/stocks/simulate_trade_2.{args.suffix}"
         )
-    elif args.task == "backtest":
-        SimulateTrade2().backtest_singles(
+    elif args.task == "test":
+        SimulateTrade2().test_singles(
             start_date="2018-01-01",
             end_date="2018-12-31",
             s3_bucket="u6k",
             input_preprocess_base_path=f"ml-data/stocks/predict_3.simulate_trade_2.{args.suffix}",
             input_model_base_path=f"ml-data/stocks/predict_3.simulate_trade_2.{args.suffix}",
-            output_base_path=f"ml-data/stocks/simulate_trade_2_backtest.{args.suffix}"
+            output_base_path=f"ml-data/stocks/simulate_trade_2_test.{args.suffix}"
         )
 
         SimulateTrade2().report_singles(
             s3_bucket="u6k",
-            base_path=f"ml-data/stocks/simulate_trade_2_backtest.{args.suffix}"
+            base_path=f"ml-data/stocks/simulate_trade_2_test.{args.suffix}"
         )
     else:
         parser.print_help()

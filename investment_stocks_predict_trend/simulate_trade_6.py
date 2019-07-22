@@ -60,9 +60,9 @@ class SimulateTrade6(SimulateTradeBase):
 
         return result
 
-    def backtest_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_base_path, output_base_path):
-        L = get_app_logger(f"backtest_singles_impl.{ticker_symbol}")
-        L.info(f"backtest_singles_6: {ticker_symbol}")
+    def test_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_base_path, output_base_path):
+        L = get_app_logger(f"test_singles_impl.{ticker_symbol}")
+        L.info(f"test_singles_6: {ticker_symbol}")
 
         result = {
             "ticker_symbol": ticker_symbol,
@@ -129,15 +129,18 @@ class SimulateTrade6(SimulateTradeBase):
 
         return result
 
-    def backtest_all(self, s3_bucket, base_path):
-        L = get_app_logger("backtest_all")
+    def test_all(self, start_date, end_date, s3_bucket, base_path):
+        L = get_app_logger("test_all")
         L.info("start")
 
         # Load data
         df_report = app_s3.read_dataframe(s3_bucket, f"{base_path}/report.csv", index_col=0)
 
         df_prices_dict = {}
-        for ticker_symbol in df_report.query("expected_value>0.01 and trade_count>5 and profit_factor>2 and risk<0.1").sort_values("expected_value", ascending=False).index:
+        for ticker_symbol in df_report.query("trade_count>5").sort_values("profit_factor", ascending=False).head(50).index:
+            if ticker_symbol in ["ni225", "topix", "djia"]:
+                continue
+
             L.info(f"load data: {ticker_symbol}")
 
             df_prices = app_s3.read_dataframe(s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
@@ -148,9 +151,6 @@ class SimulateTrade6(SimulateTradeBase):
         df_result = pd.DataFrame(columns=["fund", "asset"])
 
         # Initialize
-        start_date = datetime(2018, 1, 1)
-        end_date = datetime(2019, 1, 1)
-
         fund = 100000
         asset = fund
         available_rate = 0.05
@@ -160,7 +160,7 @@ class SimulateTrade6(SimulateTradeBase):
 
         for date in self.date_range(start_date, end_date):
             date_str = date.strftime("%Y-%m-%d")
-            L.info(f"backtest_all: {date_str}")
+            L.info(f"test_all: {date_str}")
 
             # Sell
             for ticker_symbol in df_stocks.index:
@@ -283,15 +283,15 @@ class SimulateTrade6(SimulateTradeBase):
 
             L.info(df_result.loc[date_str])
 
-        app_s3.write_dataframe(df_action, s3_bucket, f"{base_path}/backtest_all.action.csv")
-        app_s3.write_dataframe(df_result, s3_bucket, f"{base_path}/backtest_all.result.csv")
+        app_s3.write_dataframe(df_action, s3_bucket, f"{base_path}/test_all.action.csv")
+        app_s3.write_dataframe(df_result, s3_bucket, f"{base_path}/test_all.result.csv")
 
         L.info("finish")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", help="simulate, backtest, or backtest_all")
+    parser.add_argument("--task", help="simulate, test, or test_all")
     parser.add_argument("--suffix", help="folder name suffix (default: test)", default="test")
     args = parser.parse_args()
 
@@ -301,24 +301,26 @@ if __name__ == "__main__":
             input_base_path=f"ml-data/stocks/preprocess_1.{args.suffix}",
             output_base_path=f"ml-data/stocks/simulate_trade_6.{args.suffix}"
         )
-    elif args.task == "backtest":
-        SimulateTrade6().backtest_singles(
+    elif args.task == "test":
+        SimulateTrade6().test_singles(
             start_date="2018-01-01",
             end_date="2018-12-31",
             s3_bucket="u6k",
             input_preprocess_base_path=f"ml-data/stocks/predict_3.simulate_trade_6.{args.suffix}",
             input_model_base_path=f"ml-data/stocks/predict_3.simulate_trade_6.{args.suffix}",
-            output_base_path=f"ml-data/stocks/simulate_trade_6_backtest.{args.suffix}"
+            output_base_path=f"ml-data/stocks/simulate_trade_6_test.{args.suffix}"
         )
 
         SimulateTrade6().report_singles(
             s3_bucket="u6k",
-            base_path=f"ml-data/stocks/simulate_trade_6_backtest.{args.suffix}"
+            base_path=f"ml-data/stocks/simulate_trade_6_test.{args.suffix}"
         )
-    elif args.task == "backtest_all":
-        SimulateTrade6().backtest_all(
+    elif args.task == "test_all":
+        SimulateTrade6().test_all(
+            start_date=datetime(2018, 1, 1),
+            end_date=datetime(2019, 1, 1),
             s3_bucket="u6k",
-            base_path=f"ml-data/stocks/simulate_trade_6_backtest.{args.suffix}"
+            base_path=f"ml-data/stocks/simulate_trade_6_test.{args.suffix}"
         )
     else:
         parser.print_help()
