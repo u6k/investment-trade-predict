@@ -85,7 +85,10 @@ class SimulateTrade3(SimulateTradeBase):
         df_report = app_s3.read_dataframe(s3_bucket, f"{base_path}/report.csv", index_col=0)
 
         df_prices_dict = {}
-        for ticker_symbol in df_report.query("trade_count>50 and profit_factor>2.0").sort_values("expected_value", ascending=False).index:
+        for ticker_symbol in df_report.query("trade_count>50").sort_values("profit_factor", ascending=False).head(50).index:
+            if ticker_symbol in ["ni225", "topix", "djia"]:
+                continue
+
             L.info(f"load data: {ticker_symbol}")
             df_prices_dict[ticker_symbol] = app_s3.read_dataframe(s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
