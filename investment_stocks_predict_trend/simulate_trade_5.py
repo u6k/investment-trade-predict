@@ -86,12 +86,9 @@ class SimulateTrade5(SimulateTradeBase):
 
         return result
 
-    def test_all(self, s3_bucket, base_path):
+    def test_all(self, start_date, end_date, s3_bucket, base_path):
         L = get_app_logger("test_all")
         L.info("start")
-
-        start_date = datetime(2018, 1, 1)
-        end_date = datetime(2019, 1, 1)
 
         df_action = pd.DataFrame(columns=["date", "ticker_symbol", "action", "price", "stocks", "profit", "profit_rate"])
         df_stocks = pd.DataFrame(columns=["buy_price", "buy_stocks", "open_price_latest"])
@@ -265,6 +262,8 @@ if __name__ == "__main__":
         )
     elif args.task == "test_all":
         SimulateTrade5().test_all(
+            start_date=datetime(2018, 1, 1),
+            end_date=datetime(2019, 1, 1),
             s3_bucket="u6k",
             base_path=f"ml-data/stocks/simulate_trade_5_test.{args.suffix}"
         )

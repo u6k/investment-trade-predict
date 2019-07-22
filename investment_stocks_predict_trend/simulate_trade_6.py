@@ -129,7 +129,7 @@ class SimulateTrade6(SimulateTradeBase):
 
         return result
 
-    def test_all(self, s3_bucket, base_path):
+    def test_all(self, start_date, end_date, s3_bucket, base_path):
         L = get_app_logger("test_all")
         L.info("start")
 
@@ -148,9 +148,6 @@ class SimulateTrade6(SimulateTradeBase):
         df_result = pd.DataFrame(columns=["fund", "asset"])
 
         # Initialize
-        start_date = datetime(2018, 1, 1)
-        end_date = datetime(2019, 1, 1)
-
         fund = 100000
         asset = fund
         available_rate = 0.05
@@ -317,6 +314,8 @@ if __name__ == "__main__":
         )
     elif args.task == "test_all":
         SimulateTrade6().test_all(
+            start_date=datetime(2018, 1, 1),
+            end_date=datetime(2019, 1, 1),
             s3_bucket="u6k",
             base_path=f"ml-data/stocks/simulate_trade_6_test.{args.suffix}"
         )
