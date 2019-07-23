@@ -12,7 +12,7 @@ import app_s3
 from predict_base import PredictClassificationBase
 
 
-class PredictClassification_5(PredictClassificationBase):
+class PredictClassification_6(PredictClassificationBase):
     def preprocess_impl(self, ticker_symbol):
         L = get_app_logger(f"preprocess.{ticker_symbol}")
         L.info(f"predict preprocess_6: {ticker_symbol}")
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     parser.add_argument("--suffix", help="folder name suffix (default: test)", default="test")
     args = parser.parse_args()
 
-    pred = PredictClassification_5(
+    pred = PredictClassification_6(
         train_start_date="2008-01-01",
         train_end_date="2017-12-31",
         test_start_date="2018-01-01",

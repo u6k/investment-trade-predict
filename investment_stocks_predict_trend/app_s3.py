@@ -74,7 +74,7 @@ def write_keras_model(model, s3_bucket, s3_key_prefix):
         )
 
 
-def read_keras_model(model, s3_bucket, s3_key_prefix):
+def read_keras_model(s3_bucket, s3_key_prefix):
     s3 = get_client()
     obj = s3.get_object(Bucket=s3_bucket, Key=s3_key_prefix+".json")
     model = model_from_json(obj["Body"].read())
