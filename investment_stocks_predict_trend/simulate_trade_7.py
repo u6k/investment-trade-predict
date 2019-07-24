@@ -1,7 +1,6 @@
 import argparse
 from datetime import datetime
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
 
 from app_logging import get_app_logger
 import app_s3
@@ -31,17 +30,14 @@ class SimulateTrade7(SimulateTradeBase):
             df_prices = df_prices.loc[target_period_ids[0]-1: target_period_ids[-1]]
             data = df_preprocessed.loc[target_period_ids[0]-1: target_period_ids[-1]].values
             data = data.reshape(len(data), len(data[0]), 1)
-            df_prices = df_prices.assign(predict=model.predict(data, batch_size=100, verbose=0))
-
-            df_prices["profit_correct"] = df_prices["close_price"]-df_prices["open_price"]
-            scaler = MinMaxScaler()
-            df_prices["profit_correct_minmax"] = scaler.fit_transform(df_prices["profit_correct"].values.reshape(-1, 1))
-            df_prices["profit_predict"] = scaler.inverse_transform(df_prices["predict"].values.reshape(-1, 1))
+            pred_categorical = model.predict(data, batch_size=100, verbose=0)
+            pred = [0 if p[0] == 1 else 1 for p in pred_categorical]
+            df_prices = df_prices.assign(predict=pred)
 
             # Backtest
             for id in target_period_ids:
                 # Trade
-                if df_prices.at[id-1, "profit_predict"] > 0:
+                if df_prices.at[id-1, "predict"] == 1:
                     buy_price = df_prices.at[id, "open_price"]
                     sell_price = df_prices.at[id, "close_price"]
                     profit = sell_price - buy_price

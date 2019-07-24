@@ -1,10 +1,10 @@
 import argparse
-import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, r2_score
+import keras
 from keras.models import Sequential
-from keras.layers import Conv1D, MaxPooling1D, GlobalMaxPooling1D
+from keras.layers import Conv1D, MaxPooling1D, Dropout, Dense, Flatten
+from keras.optimizers import Adadelta
 from keras.callbacks import EarlyStopping
 
 from app_logging import get_app_logger
@@ -22,7 +22,7 @@ class PredictClassification_6(PredictClassificationBase):
             "exception": None
         }
 
-        period = 20
+        period = 32
 
         try:
             # Load data
@@ -40,14 +40,16 @@ class PredictClassification_6(PredictClassificationBase):
             ]].copy()
 
             df["profit"] = df["close_price"]-df["open_price"]
-            df["profit_minmax"] = MinMaxScaler().fit_transform(df["profit"].values.reshape(-1, 1))
+            df["profit_rate"] = df["profit"] / df["close_price"]
+            df["profit_rate_minmax"] = MinMaxScaler().fit_transform(df["profit_rate"].values.reshape(-1, 1))
 
             for i in range(0, period):
-                df[f"profit_minmax_{i}"] = df["profit_minmax"].shift(i)
+                df[f"profit_rate_minmax_{i}"] = df["profit_rate_minmax"].shift(i)
 
-            df["predict_target"] = df["profit_minmax"].shift(-1)
+            df["profit_rate_target"] = df["profit_rate"].shift(-1)
+            df["predict_target"] = df["profit_rate_target"].apply(lambda r: 1 if r > 0.005 else 0)
 
-            df = df.drop(["profit", "profit_minmax"], axis=1)
+            df = df.drop(["profit", "profit_rate", "profit_rate_minmax", "profit_rate_target"], axis=1)
 
             df = df.dropna()
 
@@ -108,33 +110,38 @@ class PredictClassification_6(PredictClassificationBase):
 
     def model_fit(self, x_train, y_train):
         x = x_train.reshape(len(x_train), len(x_train[0]), 1)
-        y = y_train
+        y = keras.utils.to_categorical(y_train, 2)
 
         model = Sequential()
-        model.add(Conv1D(filters=8, kernel_size=20, padding="same", input_shape=(20, 1), activation="relu"))
-        model.add(MaxPooling1D(2, padding="same"))
-        model.add(Conv1D(filters=8, kernel_size=20, padding="same", activation="relu"))
-        model.add(MaxPooling1D(2, padding="same"))
-        model.add(Conv1D(filters=1, kernel_size=10, padding="same", activation="relu"))
-        model.add(GlobalMaxPooling1D())
+        model.add(Conv1D(64, kernel_size=8, input_shape=(32, 1), activation="relu"))
+        model.add(MaxPooling1D(pool_size=2))
+        model.add(Dropout(0.25))
+        model.add(Flatten())
+        model.add(Dense(128, activation="relu"))
+        model.add(Dropout(0.25))
+        model.add(Dense(64, activation="relu"))
+        model.add(Dropout(0.25))
+        model.add(Dense(2, activation="softmax"))
 
-        model.compile(loss="mse", optimizer="adam")
+        model.compile(
+            loss="categorical_crossentropy",
+            optimizer=Adadelta(),
+            metrics=["accuracy"]
+        )
 
-        model.fit(x, y, batch_size=128, epochs=100, verbose=0, validation_split=0.1, callbacks=[EarlyStopping(patience=10)])
+        model.fit(x, y, batch_size=128, epochs=100, verbose=0, validation_split=0.2, callbacks=[EarlyStopping(patience=10)])
 
         return model
 
     def model_score(self, model, x_test, y_test):
         x = x_test.reshape(len(x_test), len(x_test[0]), 1)
+        y = keras.utils.to_categorical(y_test, 2)
 
-        y_pred = model.predict(x, batch_size=100, verbose=0)
-
-        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-        r2 = r2_score(y_test, y_pred)
+        score = model.evaluate(x, y, batch_size=100)
 
         return {
-            "rmse": rmse,
-            "r2": r2
+            "loss": score[0],
+            "accuracy": score[1]
         }
 
 
