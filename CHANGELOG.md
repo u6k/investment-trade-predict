@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - [#7227: バックテストではなく単にテストにリネームする](https://redmine.u6k.me/issues/7227)
+- [#7115: この手法を検証する…時系列予測を一次元畳み込みを使って解く](https://redmine.u6k.me/issues/7115)
 
 ## [0.12.0] - 2019-07-20
 
