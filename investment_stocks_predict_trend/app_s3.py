@@ -3,6 +3,7 @@ import io
 import joblib
 import pandas as pd
 import boto3
+from keras.models import model_from_json
 
 
 def get_client():
@@ -53,3 +54,33 @@ def read_sklearn_model(s3_bucket, s3_key):
         clf = joblib.load(buf)
 
     return clf
+
+
+def write_keras_model(model, s3_bucket, s3_key_prefix):
+    s3 = get_client()
+    s3.put_object(
+        Bucket=s3_bucket,
+        Key=s3_key_prefix + ".json",
+        Body=model.to_json()
+    )
+
+    with io.BytesIO() as buf:
+        model.save_weights(buf)
+
+        s3.put_object(
+            Bucket=s3_bucket,
+            Key=s3_key_prefix+".hdf5",
+            Body=io.BytesIO(buf.getvalue())
+        )
+
+
+def read_keras_model(s3_bucket, s3_key_prefix):
+    s3 = get_client()
+    obj = s3.get_object(Bucket=s3_bucket, Key=s3_key_prefix+".json")
+    model = model_from_json(obj["Body"].read())
+
+    obj = s3.get_object(Bucket=s3_bucket, Key=s3_key_prefix+".hdf5")
+    with io.BytesIO(obj["Body"].read()) as buf:
+        model.load_weights(buf)
+
+    return model
