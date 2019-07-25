@@ -7,28 +7,54 @@ import app_s3
 
 
 class SimulateTradeBase():
-    def simulate_singles(self, *, s3_bucket, input_base_path, output_base_path):
-        L = get_app_logger("simulate_singles")
-        L.info("start")
+    def __init__(self, job_name):
+        self._job_name = job_name
+
+    def simulate(self, s3_bucket, input_base_path, output_base_path):
+        L = get_app_logger(f"{self._job_name}.simulate")
+        L.info(f"{self._job_name}.simulate: start")
 
         df_companies = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/companies.csv", index_col=0)
-        df_companies_result = pd.DataFrame(columns=df_companies.columns)
+        df_result = pd.DataFrame(columns=df_companies.columns)
 
-        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.simulate_singles_impl)(ticker_symbol, s3_bucket, input_base_path, output_base_path) for ticker_symbol in df_companies.index])
+        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.simulate_impl)(ticker_symbol, s3_bucket, input_base_path, output_base_path) for ticker_symbol in df_companies.index])
 
         for result in results:
             if result["exception"] is not None:
                 continue
 
             ticker_symbol = result["ticker_symbol"]
-            df_companies_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
+            df_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
 
-        app_s3.write_dataframe(df_companies_result, s3_bucket, f"{output_base_path}/companies.csv")
+        app_s3.write_dataframe(df_result, s3_bucket, f"{output_base_path}/companies.csv")
 
-        L.info("finish")
+        L.info(f"{self._job_name}.simulate: finish")
 
-    def simulate_singles_impl(self, ticker_symbol, s3_bucket, input_base_path, output_base_path):
+    def simulate_impl(self, ticker_symbol, s3_bucket, input_base_path, output_base_path):
         raise Exception("Not implemented.")
+
+    def simulate_report(self, start_date, end_date, s3_bucket, base_path):
+        L = get_app_logger(f"{self._job_name}.simulate_report")
+        L.info(f"{self._job_name}.simulate_report: start")
+
+        df_companies = app_s3.read_dataframe(s3_bucket, f"{base_path}/companies.csv", index_col=0)
+        df_result = pd.DataFrame(columns=df_companies.columns)
+
+        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.report_impl)(ticker_symbol, start_date, end_date, s3_bucket, base_path) for ticker_symbol in df_companies.index])
+
+        for result in results:
+            if result["exception"] is not None:
+                continue
+
+            ticker_symbol = result["ticker_symbol"]
+            df_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
+
+            for k in result.keys():
+                if k != "ticker_symbol" and k != "exception":
+                    df_result.at[ticker_symbol, k] = result[k]
+
+        app_s3.write_dataframe(df_result, s3_bucket, f"{base_path}/report.csv")
+        L.info("finish")
 
     def test_singles(self, *, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_base_path, output_base_path):
         L = get_app_logger("test_singles")
@@ -53,7 +79,7 @@ class SimulateTradeBase():
         raise Exception("Not implemented.")
 
     def report_singles(self, *, s3_bucket, base_path):
-        L = get_app_logger("report_singles")
+        L = get_app_logger(f"report_singles")
         L.info("start")
 
         df_companies = app_s3.read_dataframe(s3_bucket, f"{base_path}/companies.csv", index_col=0)
@@ -75,9 +101,9 @@ class SimulateTradeBase():
         app_s3.write_dataframe(df_result, s3_bucket, f"{base_path}/report.csv")
         L.info("finish")
 
-    def report_singles_impl(self, ticker_symbol, s3_bucket, base_path):
-        L = get_app_logger(f"report_singles_impl.{ticker_symbol}")
-        L.info(f"report_singles: {ticker_symbol}")
+    def report_impl(self, ticker_symbol, start_date, end_date, s3_bucket, base_path):
+        L = get_app_logger(f"{self._job_name}.report_impl.{ticker_symbol}")
+        L.info(f"{self._job_name}.report_impl: {ticker_symbol}")
 
         result = {
             "ticker_symbol": ticker_symbol,
@@ -85,9 +111,10 @@ class SimulateTradeBase():
         }
 
         try:
-            df = app_s3.read_dataframe(s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+            df = app_s3.read_dataframe(s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
+                .query(f"'{start_date}' <= date <= '{end_date}'")
 
-            if "profit" not in df.columns:
+            if len(df) == 0 or "profit" not in df.columns:
                 raise Exception("no trade")
 
             result["trade_count"] = len(df.query("not profit.isnull()"))
@@ -101,6 +128,7 @@ class SimulateTradeBase():
             result["close_price_latest"] = df["close_price"].values[-1]
             result["volume_average"] = df["volume"].mean()
             result["expected_value"] = df["profit_rate"].mean()
+            result["expected_value_win_only"] = df.query("profit>0")["profit_rate"].mean()
             result["risk"] = df["profit_rate"].std()
             result["profit_total"] = df.query("profit>0")["profit"].sum()
             result["loss_total"] = df.query("profit<=0")["profit"].sum()
