@@ -98,7 +98,9 @@ class PredictClassificationBase():
                 "stochastic_sd_40_std"
             ]].copy()
 
-            df["predict_target"] = df_simulate["profit_rate"].shift(-1).apply(lambda v: 1 if v > 0.0 else 0)
+            for id in df.index[1:]:
+                if df_simulate.at[id, "profit_rate"] is not None:
+                    df.at[id-1, "predict_target"] = (1 if df_simulate.at[id, "profit_rate"] > 0 else 0)
 
             df = df.dropna()
 
