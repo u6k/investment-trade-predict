@@ -17,8 +17,9 @@ class SimulateTrade4(SimulateTradeBase):
             "exception": None
         }
 
-        compare_high_price_period = 5
-        hold_period = 5
+        compare_high_price_period = 10
+        losscut_rate = 0.95
+        take_profit_rate = 0.95
 
         try:
             # Load data
@@ -34,20 +35,47 @@ class SimulateTrade4(SimulateTradeBase):
             for id in df.index:
                 df.at[id, "buy_signal"] = 1 if df.at[id, "high_price"] > df.at[id, "past_high_price_max"] else 0
 
-            # Calc profit
-            df["buy_price"] = df["open_price"].shift(-1)
-            df["sell_price"] = df["open_price"].shift(-hold_period-1)
-            df["profit"] = df["sell_price"] - df["buy_price"]
-            df["profit_rate"] = df["profit"] / df["sell_price"]
-
-            # Drop dust data
-            for id in df.index:
-                if df.at[id, "buy_signal"] == 0:
-                    df.at[id, "profit"] = None
-                    df.at[id, "profit_rate"] = None
-
+            past_high_price_columns.append("past_high_price_max")
             df = df.drop(past_high_price_columns, axis=1)
-            df = df.drop(["past_high_price_max", "buy_signal", "buy_price", "sell_price"], axis=1)
+
+            # Calc profit
+            for id in df.query("buy_signal==1").index:
+                buy_id = id + 1
+                buy_price = df.at[buy_id, "open_price"]
+                losscut_price = buy_price * losscut_rate
+                take_profit_price = buy_price * take_profit_rate
+                sell_id = None
+                sell_price = None
+                take_profit = False
+
+                for id in df.loc[buy_id:].index:
+                    if take_profit:
+                        sell_id = id
+                        sell_price = df.at[id, "open_price"]
+                        break
+
+                    if df.at[id, "low_price"] < losscut_price:
+                        sell_id = id
+                        sell_price = df.at[id, "low_price"]
+                        break
+
+                    if df.at[id, "high_price"] < take_profit_price:
+                        take_profit = True
+
+                    losscut_price_tmp = df.at[id, "high_price"] * losscut_rate
+                    if losscut_price_tmp > losscut_price:
+                        losscut_price = losscut_price_tmp
+
+                    take_profit_price_tmp = df.at[id, "high_price"] * take_profit_rate
+                    if take_profit_price_tmp > take_profit_price:
+                        take_profit_price = take_profit_price_tmp
+
+                if sell_id is not None:
+                    df.at[buy_id, "buy_price"] = buy_price
+                    df.at[buy_id, "sell_id"] = sell_id
+                    df.at[buy_id, "sell_price"] = sell_price
+                    df.at[buy_id, "profit"] = sell_price - buy_price
+                    df.at[buy_id, "profit_rate"] = (sell_price - buy_price) / sell_price
 
             # Save data
             app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
@@ -66,7 +94,8 @@ class SimulateTrade4(SimulateTradeBase):
             "exception": None
         }
 
-        hold_period = 5
+        losscut_rate = 0.95
+        take_profit_rate = 0.95
 
         try:
             # Load data
@@ -82,36 +111,44 @@ class SimulateTrade4(SimulateTradeBase):
             data = df_preprocessed.loc[target_period_ids[0]-1: target_period_ids[-1]].values
             df_prices = df_prices.assign(predict=clf.predict(data))
 
-            # Backtest
-            buy_price = None
-            hold_days_remain = None
+            # Test
+            for id in df_prices.query("predict==1").index:
+                buy_id = id + 1
+                buy_price = df_prices.at[buy_id, "open_price"]
+                losscut_price = buy_price * losscut_rate
+                take_profit_price = buy_price * take_profit_rate
+                sell_id = None
+                sell_price = None
+                take_profit = False
 
-            for id in target_period_ids:
-                # Buy
-                if buy_price is None and df_prices.at[id-1, "predict"] == 1:
-                    buy_price = df_prices.at[id, "open_price"]
-                    hold_days_remain = hold_period
+                for id in df_prices.loc[buy_id:].index:
+                    if take_profit:
+                        sell_id = id
+                        sell_price = df_prices.at[id, "open_price"]
+                        break
 
-                    df_prices.at[id, "action"] = "buy"
+                    if df_prices.at[id, "low_price"] < losscut_price:
+                        sell_id = id
+                        sell_price = df_prices.at[id, "low_price"]
+                        break
 
-                # Sell
-                if hold_days_remain == 0:
-                    sell_price = df_prices.at[id, "open_price"]
-                    profit = sell_price - buy_price
-                    profit_rate = profit / sell_price
+                    if df.at[id, "high_price"] < take_profit_price:
+                        take_profit = True
 
-                    df_prices.at[id, "action"] = "sell"
-                    df_prices.at[id, "buy_price"] = buy_price
-                    df_prices.at[id, "sell_price"] = sell_price
-                    df_prices.at[id, "profit"] = profit
-                    df_prices.at[id, "profit_rate"] = profit_rate
+                    losscut_price_tmp = df_prices.at[id, "high_price"] * losscut_rate
+                    if losscut_price_tmp > losscut_price:
+                        losscut_price = losscut_price_tmp
 
-                    buy_price = None
-                    hold_days_remain = None
+                    take_profit_price_tmp = df_prices.at[id, "high_price"] * take_profit_rate
+                    if take_profit_price_tmp > take_profit_price:
+                        take_profit_price = take_profit_price_tmp
 
-                # Turn end
-                if hold_days_remain is not None:
-                    hold_days_remain -= 1
+                if sell_id is not None:
+                    df_prices.at[buy_id, "buy_price"] = buy_price
+                    df_prices.at[buy_id, "sell_id"] = sell_id
+                    df_prices.at[buy_id, "sell_price"] = sell_price
+                    df_prices.at[buy_id, "profit"] = sell_price - buy_price
+                    df_prices.at[buy_id, "profit_rate"] = (sell_price - buy_price) / sell_price
 
             app_s3.write_dataframe(df_prices, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
         except Exception as err:
@@ -124,82 +161,36 @@ class SimulateTrade4(SimulateTradeBase):
         L = get_app_logger("test_all")
         L.info("start")
 
-        df_action = pd.DataFrame(columns=["date", "ticker_symbol", "action", "price", "stocks", "profit", "profit_rate"])
-        df_stocks = pd.DataFrame(columns=["buy_price", "buy_stocks", "hold_days_remain", "open_price_latest"])
+        df_action = pd.DataFrame(columns=["date", "ticker_symbol", "action", "price", "stocks", "profit", "profit_rate", "fee", "tax"])
+        df_stocks = pd.DataFrame(columns=["buy_price", "buy_stocks", "losscut_price", "take_profit_price", "take_profit", "close_price_latest"])
         df_result = pd.DataFrame(columns=["fund", "asset"])
 
         df_report = app_s3.read_dataframe(s3_bucket, f"{base_path}/report.csv", index_col=0)
 
         df_prices_dict = {}
-        for ticker_symbol in df_report.query("trade_count>5").sort_values("profit_factor", ascending=False).head(50).index:
+        for ticker_symbol in df_report.query("trade_count>10 and profit_factor>2.0").sort_values("expected_value", ascending=False).head(50).index:
             if ticker_symbol in ["ni225", "topix", "djia"]:
                 continue
 
             L.info(f"load data: {ticker_symbol}")
             df_prices_dict[ticker_symbol] = app_s3.read_dataframe(s3_bucket, f"{base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-        fund = 100000
+        fund = 1000000
         asset = fund
         available_rate = 0.05
         total_available_rate = 0.5
         fee_rate = 0.001
         tax_rate = 0.21
-        hold_period = 5
+        losscut_rate = 0.95
+        take_profit_rate = 0.95
 
         for date in self.date_range(start_date, end_date):
             date_str = date.strftime("%Y-%m-%d")
             L.info(f"test_all: {date_str}")
 
-            # Buy
-            for ticker_symbol in df_prices_dict.keys():
-                df_prices = df_prices_dict[ticker_symbol]
-
-                if len(df_prices.query(f"date=='{date_str}'")) == 0:
-                    continue
-
-                prices_id = df_prices.query(f"date=='{date_str}'").index[0]
-
-                if df_prices.at[prices_id, "action"] != "buy":
-                    continue
-
-                buy_price = df_prices.at[prices_id, "open_price"]
-                buy_stocks = asset * available_rate // buy_price
-                hold_days_remain = hold_period
-
-                if buy_stocks <= 0:
-                    continue
-
-                if (fund - buy_price * buy_stocks) < (asset * total_available_rate):
-                    continue
-
-                fund -= buy_price * buy_stocks
-
-                action_id = len(df_action)
-                df_action.at[action_id, "date"] = date_str
-                df_action.at[action_id, "ticker_symbol"] = ticker_symbol
-                df_action.at[action_id, "action"] = "buy"
-                df_action.at[action_id, "price"] = buy_price
-                df_action.at[action_id, "stocks"] = buy_stocks
-
-                fee_price = (buy_price * buy_stocks) * fee_rate
-                fund -= fee_price
-
-                action_id = len(df_action)
-                df_action.at[action_id, "date"] = date_str
-                df_action.at[action_id, "ticker_symbol"] = ticker_symbol
-                df_action.at[action_id, "action"] = "fee"
-                df_action.at[action_id, "price"] = fee_price
-                df_action.at[action_id, "stocks"] = 1
-                df_action.at[action_id, "profit"] = -1 * fee_price
-
-                df_stocks.at[ticker_symbol, "buy_price"] = buy_price
-                df_stocks.at[ticker_symbol, "buy_stocks"] = buy_stocks
-                df_stocks.at[ticker_symbol, "hold_days_remain"] = hold_days_remain
-                df_stocks.at[ticker_symbol, "open_price_latest"] = buy_price
-
-            # Sell
+            # Sell: take profit
             for ticker_symbol in df_stocks.index:
-                if df_stocks.at[ticker_symbol, "hold_days_remain"] > 0:
+                if not df_stocks.at[ticker_symbol, "take_profit"]:
                     continue
 
                 df_prices = df_prices_dict[ticker_symbol]
@@ -208,14 +199,14 @@ class SimulateTrade4(SimulateTradeBase):
                     continue
 
                 prices_id = df_prices.query(f"date=='{date_str}'").index[0]
+
                 sell_price = df_prices.at[prices_id, "open_price"]
                 buy_price = df_stocks.at[ticker_symbol, "buy_price"]
                 buy_stocks = df_stocks.at[ticker_symbol, "buy_stocks"]
-
                 profit = (sell_price - buy_price) * buy_stocks
-                profit_rate = profit / (sell_price * buy_stocks)
-
-                fund += sell_price * buy_stocks
+                profit_rate = (sell_price - buy_price) / sell_price
+                fee = sell_price * buy_stocks * fee_rate
+                tax = profit * tax_rate if profit > 0 else 0
 
                 action_id = len(df_action)
                 df_action.at[action_id, "date"] = date_str
@@ -225,33 +216,14 @@ class SimulateTrade4(SimulateTradeBase):
                 df_action.at[action_id, "stocks"] = buy_stocks
                 df_action.at[action_id, "profit"] = profit
                 df_action.at[action_id, "profit_rate"] = profit_rate
-
-                fee_price = (sell_price * buy_stocks) * fee_rate
-                fund -= fee_price
-
-                action_id = len(df_action)
-                df_action.at[action_id, "date"] = date_str
-                df_action.at[action_id, "ticker_symbol"] = ticker_symbol
-                df_action.at[action_id, "action"] = "fee"
-                df_action.at[action_id, "price"] = fee_price
-                df_action.at[action_id, "stocks"] = 1
-                df_action.at[action_id, "profit"] = -1 * fee_price
-
-                if profit > 0:
-                    tax_price = profit * tax_rate
-                    fund -= tax_price
-
-                    action_id = len(df_action)
-                    df_action.at[action_id, "date"] = date_str
-                    df_action.at[action_id, "ticker_symbol"] = ticker_symbol
-                    df_action.at[action_id, "action"] = "tax"
-                    df_action.at[action_id, "price"] = tax_price
-                    df_action.at[action_id, "stocks"] = 1
-                    df_action.at[action_id, "profit"] = -1 * tax_price
+                df_action.at[action_id, "fee"] = fee
+                df_action.at[action_id, "tax"] = tax
 
                 df_stocks = df_stocks.drop(ticker_symbol)
 
-            # Turn end
+                fund += profit-fee-tax
+
+            # Sell: losscut
             for ticker_symbol in df_stocks.index:
                 df_prices = df_prices_dict[ticker_symbol]
 
@@ -260,12 +232,109 @@ class SimulateTrade4(SimulateTradeBase):
 
                 prices_id = df_prices.query(f"date=='{date_str}'").index[0]
 
-                df_stocks.at[ticker_symbol, "hold_days_remain"] -= 1
-                df_stocks.at[ticker_symbol, "open_price_latest"] = df_prices.at[prices_id, "open_price"]
+                if df_prices.at[prices_id, "low_price"] >= df_stocks.at[ticker_symbol, "losscut_price"]:
+                    continue
+
+                sell_price = df_prices.at[prices_id, "open_price"]
+                buy_price = df_stocks.at[ticker_symbol, "buy_price"]
+                buy_stocks = df_stocks.at[ticker_symbol, "buy_stocks"]
+                profit = (sell_price - buy_price) * buy_stocks
+                profit_rate = (sell_price - buy_price) / sell_price
+                fee = sell_price * buy_stocks * fee_rate
+                tax = profit * tax_rate if profit > 0 else 0
+
+                action_id = len(df_action)
+                df_action.at[action_id, "date"] = date_str
+                df_action.at[action_id, "ticker_symbol"] = ticker_symbol
+                df_action.at[action_id, "action"] = "sell"
+                df_action.at[action_id, "price"] = sell_price
+                df_action.at[action_id, "stocks"] = buy_stocks
+                df_action.at[action_id, "profit"] = profit
+                df_action.at[action_id, "profit_rate"] = profit_rate
+                df_action.at[action_id, "fee"] = fee
+                df_action.at[action_id, "tax"] = tax
+
+                df_stocks = df_stocks.drop(ticker_symbol)
+
+                fund += profit-fee-tax
+
+            # Flag take profit
+            for ticker_symbol in df_stocks.index:
+                df_prices = df_prices_dict[ticker_symbol]
+
+                if len(df_prices.query(f"date=='{date_str}'")) == 0:
+                    continue
+
+                prices_id = df_prices.query(f"date=='{date_str}'").index[0]
+
+                if df_prices.at[prices_id, "high_price"] < df_stocks.at[ticker_symbol, "take_profit_price"]:
+                    df_stocks.at[ticker_symbol, "take_profit"] = True
+
+            # Buy
+            for ticker_symbol in df_prices_dict.keys():
+                if ticker_symbol in df_stocks.index:
+                    continue
+
+                df_prices = df_prices_dict[ticker_symbol]
+
+                if len(df_prices.query(f"date=='{date_str}'")) == 0:
+                    continue
+
+                prices_id = df_prices.query(f"date=='{date_str}'").index[0]
+
+                if df_prices.at[prices_id, "buy_price"] is None:
+                    continue
+
+                buy_price = df_prices.at[prices_id, "open_price"]
+                buy_stocks = asset * available_rate // buy_price
+
+                if buy_stocks <= 0:
+                    continue
+
+                if (fund - buy_price * buy_stocks) < (asset * total_available_rate):
+                    continue
+
+                fee = buy_price * buy_stocks * fee_rate
+                losscut_price = buy_price * losscut_rate
+                take_profit_price = buy_price * take_profit_rate
+
+                action_id = len(df_action)
+                df_action.at[action_id, "date"] = date_str
+                df_action.at[action_id, "ticker_symbol"] = ticker_symbol
+                df_action.at[action_id, "action"] = "buy"
+                df_action.at[action_id, "price"] = buy_price
+                df_action.at[action_id, "stocks"] = buy_stocks
+                df_action.at[action_id, "fee"] = fee
+
+                df_stocks.at[ticker_symbol, "buy_price"] = buy_price
+                df_stocks.at[ticker_symbol, "buy_stocks"] = buy_stocks
+                df_stocks.at[ticker_symbol, "losscut_price"] = losscut_price
+                df_stocks.at[ticker_symbol, "take_profit_price"] = take_profit_price
+                df_stocks.at[ticker_symbol, "take_profit"] = False
+                df_stocks.at[ticker_symbol, "close_price_latest"] = df_prices.at[prices_id, "close_price"]
+
+                fund -= buy_price * buy_stocks + fee
+
+            # Update losscut, take profit
+            for ticker_symbol in df_stocks.index:
+                df_prices = df_prices_dict[ticker_symbol]
+
+                if len(df_prices.query(f"date=='{date_str}'")) == 0:
+                    continue
+
+                prices_id = df_prices.query(f"date=='{date_str}'").index[0]
+
+                losscut_price_tmp = df_prices.at[prices_id, "high_price"] * losscut_rate
+                if losscut_price_tmp > df_stocks.at[ticker_symbol, "losscut_price"]:
+                    df_stocks.at[ticker_symbol, "losscut_price"] = losscut_price_tmp
+
+                take_profit_price_tmp = df_prices.at[prices_id, "high_price"] * take_profit_rate
+                if take_profit_price_tmp > df_stocks.at[ticker_symbol, "take_profit_price"]:
+                    df_stocks.at[ticker_symbol, "take_profit_price"] = take_profit_price_tmp
 
             asset = fund
             for ticker_symbol in df_stocks.index:
-                asset += df_stocks.at[ticker_symbol, "open_price_latest"] * df_stocks.at[ticker_symbol, "buy_stocks"]
+                asset += df_stocks.at[ticker_symbol, "close_price_latest"] * df_stocks.at[ticker_symbol, "buy_stocks"]
 
             df_result.at[date_str, "fund"] = fund
             df_result.at[date_str, "asset"] = asset
