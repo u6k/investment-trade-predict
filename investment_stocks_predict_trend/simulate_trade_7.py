@@ -8,6 +8,28 @@ from simulate_trade_base import SimulateTradeBase
 
 
 class SimulateTrade7(SimulateTradeBase):
+    def simulate_impl(self, ticker_symbol, s3_bucket, input_base_path, output_base_path):
+        L = get_app_logger(f"{self._job_name}.simulate_impl.{ticker_symbol}")
+        L.info(f"{self._job_name}.simulate_impl: {ticker_symbol}")
+
+        result = {
+            "ticker_symbol": ticker_symbol,
+            "exception": None
+        }
+
+        try:
+            df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+
+            df["profit"] = df["close_price"] - df["open_price"]
+            df["profit_rate"] = df["profit"] / df["close_price"]
+
+            app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
+        except Exception as err:
+            L.exception(f"ticker_symbol={ticker_symbol}, {err}")
+            result["exception"] = err
+
+        return result
+
     def test_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_base_path, output_base_path):
         L = get_app_logger(f"test_singles_impl.{ticker_symbol}")
         L.info(f"test_singles_3: {ticker_symbol}")
@@ -157,11 +179,26 @@ class SimulateTrade7(SimulateTradeBase):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", help="test, or test_all")
+    parser.add_argument("--task", help="simulate, test, or test_all")
     parser.add_argument("--suffix", help="folder name suffix (default: test)", default="test")
     args = parser.parse_args()
 
-    if args.task == "test":
+    simulator = SimulateTrade7("simulate_trade_7")
+
+    if args.task == "simulate":
+        simulator.simulate(
+            s3_bucket="u6k",
+            input_base_path=f"ml-data/stocks/preprocess_1.{args.suffix}",
+            output_base_path=f"ml-data/stocks/simulate_trade_7.{args.suffix}"
+        )
+
+        simulator.simulate_report(
+            start_date="2018-01-01",
+            end_date="2018-12-31",
+            s3_bucket="u6k",
+            base_path=f"ml-data/stocks/simulate_trade_7.{args.suffix}"
+        )
+    elif args.task == "test":
         SimulateTrade7().test_singles(
             start_date="2018-01-01",
             end_date="2018-12-31",

@@ -213,6 +213,7 @@ if __name__ == "__main__":
             input_base_path=f"ml-data/stocks/preprocess_1.{args.suffix}",
             output_base_path=f"ml-data/stocks/simulate_trade_3.{args.suffix}"
         )
+
         simulator.simulate_report(
             start_date="2018-01-01",
             end_date="2018-12-31",
@@ -220,7 +221,7 @@ if __name__ == "__main__":
             base_path=f"ml-data/stocks/simulate_trade_3.{args.suffix}"
         )
     elif args.task == "test":
-        SimulateTrade3().test_singles(
+        simulator.test_singles(
             start_date="2018-01-01",
             end_date="2018-12-31",
             s3_bucket="u6k",
@@ -229,12 +230,12 @@ if __name__ == "__main__":
             output_base_path=f"ml-data/stocks/simulate_trade_3_test.{args.suffix}"
         )
 
-        SimulateTrade3().report_singles(
+        simulator.report_singles(
             s3_bucket="u6k",
             base_path=f"ml-data/stocks/simulate_trade_3_test.{args.suffix}"
         )
     elif args.task == "test_all":
-        SimulateTrade3().test_all(
+        simulator.test_all(
             start_date=datetime(2018, 1, 1),
             end_date=datetime(2019, 1, 1),
             s3_bucket="u6k",
