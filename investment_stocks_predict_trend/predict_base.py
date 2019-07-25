@@ -9,6 +9,7 @@ import app_s3
 
 class PredictClassificationBase():
     def __init__(self, **kwargs):
+        self._job_name = kwargs["job_name"]
         self._train_start_date = kwargs["train_start_date"]
         self._train_end_date = kwargs["train_end_date"]
         self._test_start_date = kwargs["test_start_date"]
@@ -19,13 +20,14 @@ class PredictClassificationBase():
         self._output_base_path = kwargs["output_base_path"]
 
     def preprocess(self):
-        L = get_app_logger()
-        L.info("start")
+        L = get_app_logger(f"{self._job_name}.preprocess")
+        L.info(f"{self._job_name}.preprocess: start")
 
         df_companies = app_s3.read_dataframe(self._s3_bucket, f"{self._input_preprocess_base_path}/companies.csv", index_col=0)
+        df_report = app_s3.read_dataframe(self._s3_bucket, f"{self._input_simulate_base_path}/report.csv", index_col=0)
         df_result = pd.DataFrame(columns=df_companies.columns)
 
-        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.preprocess_impl)(ticker_symbol) for ticker_symbol in df_companies.index])
+        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.preprocess_impl)(ticker_symbol) for ticker_symbol in df_report.sort_values("expected_value_win_only", ascending=False).head(100).index])
 
         for result in results:
             if result["exception"] is not None:
@@ -36,11 +38,11 @@ class PredictClassificationBase():
 
         app_s3.write_dataframe(df_result, self._s3_bucket, f"{self._output_base_path}/companies.csv")
 
-        L.info("finish")
+        L.info(f"{self._job_name}.preprocess: finish")
 
     def preprocess_impl(self, ticker_symbol):
-        L = get_app_logger(f"preprocess.{ticker_symbol}")
-        L.info(f"predict preprocess: {ticker_symbol}")
+        L = get_app_logger(f"{self._job_name}.preprocess_impl.{ticker_symbol}")
+        L.info(f"{self._job_name}.preprocess_impl: {ticker_symbol}")
 
         result = {
             "ticker_symbol": ticker_symbol,
@@ -55,54 +57,53 @@ class PredictClassificationBase():
             # Preprocess
             df = df_preprocess[[
                 "date",
-                "open_price",
-                "high_price",
-                "low_price",
-                "close_price",
-                "adjusted_close_price",
-                "volume",
-                "sma_5_std",
-                "sma_10_std",
-                "sma_20_std",
-                "sma_40_std",
-                "sma_80_std",
-                "momentum_5_std",
-                "momentum_10_std",
-                "momentum_20_std",
-                "momentum_40_std",
-                "momentum_80_std",
-                "roc_5_std",
-                "roc_10_std",
-                "roc_20_std",
-                "roc_40_std",
-                "roc_80_std",
-                "rsi_5_std",
-                "rsi_10_std",
-                "rsi_14_std",
-                "rsi_20_std",
-                "rsi_40_std",
-                "stochastic_k_5_std",
-                "stochastic_d_5_std",
-                "stochastic_sd_5_std",
-                "stochastic_k_9_std",
-                "stochastic_d_9_std",
-                "stochastic_sd_9_std",
-                "stochastic_k_20_std",
-                "stochastic_d_20_std",
-                "stochastic_sd_20_std",
-                "stochastic_k_25_std",
-                "stochastic_d_25_std",
-                "stochastic_sd_25_std",
-                "stochastic_k_40_std",
-                "stochastic_d_40_std",
-                "stochastic_sd_40_std"
             ]].copy()
 
-            for id in df.index[1:]:
-                if df_simulate.at[id, "profit_rate"] is not None:
-                    df.at[id-1, "predict_target"] = (1 if df_simulate.at[id, "profit_rate"] > 0 else 0)
+            columns = [
+                "sma_5",
+                "sma_10",
+                "sma_20",
+                "sma_40",
+                "sma_80",
+                "momentum_5",
+                "momentum_10",
+                "momentum_20",
+                "momentum_40",
+                "momentum_80",
+                "roc_5",
+                "roc_10",
+                "roc_20",
+                "roc_40",
+                "roc_80",
+                "rsi_5",
+                "rsi_10",
+                "rsi_14",
+                "rsi_20",
+                "rsi_40",
+                "stochastic_k_5",
+                "stochastic_d_5",
+                "stochastic_sd_5",
+                "stochastic_k_9",
+                "stochastic_d_9",
+                "stochastic_sd_9",
+                "stochastic_k_20",
+                "stochastic_d_20",
+                "stochastic_sd_20",
+                "stochastic_k_25",
+                "stochastic_d_25",
+                "stochastic_sd_25",
+                "stochastic_k_40",
+                "stochastic_d_40",
+                "stochastic_sd_40"
+            ]
 
-            df = df.dropna()
+            data_len = 20
+            for column in columns:
+                for i in range(data_len):
+                    df[f"{column}_{i}"] = df_preprocess[column].shift(i)
+
+            for id in df_simulate.query("not profit_rate.isnull()").index:
+                df.at[id-1, "predict_target"] = (1 if df_simulate.at[id, "profit_rate"] >= 0.003 else 0)
 
             # Save data
             app_s3.write_dataframe(df, self._s3_bucket, f"{self._output_base_path}/stock_prices.{ticker_symbol}.csv")
@@ -116,7 +117,7 @@ class PredictClassificationBase():
         L = get_app_logger()
         L.info("start")
 
-        df_companies = app_s3.read_dataframe(self._s3_bucket, f"{self._input_preprocess_base_path}/companies.csv", index_col=0)
+        df_companies = app_s3.read_dataframe(self._s3_bucket, f"{self._output_base_path}/companies.csv", index_col=0)
         df_result = pd.DataFrame(columns=df_companies.columns)
 
         results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.train_impl)(ticker_symbol) for ticker_symbol in df_companies.index])
@@ -126,11 +127,11 @@ class PredictClassificationBase():
                 continue
 
             ticker_symbol = result["ticker_symbol"]
-            scores = result["scores"]
-
             df_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
-            for key in scores.keys():
-                df_result.at[ticker_symbol, key] = scores[key]
+
+            scores = result["scores"]
+            for k in scores.keys():
+                df_result.at[ticker_symbol, k] = scores[k]
 
         app_s3.write_dataframe(df_result, self._s3_bucket, f"{self._output_base_path}/report.csv")
 
@@ -161,10 +162,11 @@ class PredictClassificationBase():
 
     def train_test_split(self, ticker_symbol):
         # Load data
-        df = app_s3.read_dataframe(self._s3_bucket, f"{self._output_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+        df = app_s3.read_dataframe(self._s3_bucket, f"{self._output_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
+            .dropna()
 
         # Check data size
-        if len(df.query(f"date < '{self._train_start_date}'")) == 0 or len(df.query(f"date > '{self._test_end_date}'")) == 0:
+        if len(df.query(f"'{self._train_start_date}' <= date <= '{self._train_end_date}'")) == 0 or len(df.query(f"'{self._test_start_date}' <= date <= '{self._test_end_date}'")) == 0:
             raise Exception("little data")
 
         # Split train/test
@@ -173,8 +175,8 @@ class PredictClassificationBase():
         test_start_id = df.query(f"'{self._test_start_date}' <= date <= '{self._test_end_date}'").index[0]
         test_end_id = df.query(f"'{self._test_start_date}' <= date <= '{self._test_end_date}'").index[-1]
 
-        df_data_train = df.loc[train_start_id: train_end_id].drop(["date", "open_price", "high_price", "low_price", "close_price", "adjusted_close_price", "volume", "predict_target"], axis=1)
-        df_data_test = df.loc[test_start_id: test_end_id].drop(["date", "open_price", "high_price", "low_price", "close_price", "adjusted_close_price", "volume", "predict_target"], axis=1)
+        df_data_train = df.loc[train_start_id: train_end_id].drop(["date", "predict_target"], axis=1)
+        df_data_test = df.loc[test_start_id: test_end_id].drop(["date", "predict_target"], axis=1)
         df_target_train = df.loc[train_start_id: train_end_id][["predict_target"]]
         df_target_test = df.loc[test_start_id: test_end_id][["predict_target"]]
 
@@ -223,8 +225,8 @@ class PredictClassificationBase():
 
 class PredictRegressionBase(PredictClassificationBase):
     def preprocess_impl(self, ticker_symbol):
-        L = get_app_logger(f"preprocess.{ticker_symbol}")
-        L.info(f"predict preprocess: {ticker_symbol}")
+        L = get_app_logger(f"{self._job_name}.preprocess_impl.{ticker_symbol}")
+        L.info(f"{self._job_name}.preprocess_impl: {ticker_symbol}")
 
         result = {
             "ticker_symbol": ticker_symbol,
@@ -236,59 +238,55 @@ class PredictRegressionBase(PredictClassificationBase):
             df_preprocess = app_s3.read_dataframe(self._s3_bucket, f"{self._input_preprocess_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
             df_simulate = app_s3.read_dataframe(self._s3_bucket, f"{self._input_simulate_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-            # Check data size
-            if len(df_preprocess.query(f"date < '{self._train_start_date}'")) == 0 or len(df_preprocess.query(f"date > '{self._test_end_date}'")) == 0:
-                raise Exception("little data")
-
             # Preprocess
             df = df_preprocess[[
                 "date",
-                "open_price",
-                "high_price",
-                "low_price",
-                "close_price",
-                "adjusted_close_price",
-                "volume",
-                "sma_5_std",
-                "sma_10_std",
-                "sma_20_std",
-                "sma_40_std",
-                "sma_80_std",
-                "momentum_5_std",
-                "momentum_10_std",
-                "momentum_20_std",
-                "momentum_40_std",
-                "momentum_80_std",
-                "roc_5_std",
-                "roc_10_std",
-                "roc_20_std",
-                "roc_40_std",
-                "roc_80_std",
-                "rsi_5_std",
-                "rsi_10_std",
-                "rsi_14_std",
-                "rsi_20_std",
-                "rsi_40_std",
-                "stochastic_k_5_std",
-                "stochastic_d_5_std",
-                "stochastic_sd_5_std",
-                "stochastic_k_9_std",
-                "stochastic_d_9_std",
-                "stochastic_sd_9_std",
-                "stochastic_k_20_std",
-                "stochastic_d_20_std",
-                "stochastic_sd_20_std",
-                "stochastic_k_25_std",
-                "stochastic_d_25_std",
-                "stochastic_sd_25_std",
-                "stochastic_k_40_std",
-                "stochastic_d_40_std",
-                "stochastic_sd_40_std"
             ]].copy()
 
-            df["predict_target"] = df_simulate["profit_rate"].shift(-1)
+            columns = [
+                "sma_5",
+                "sma_10",
+                "sma_20",
+                "sma_40",
+                "sma_80",
+                "momentum_5",
+                "momentum_10",
+                "momentum_20",
+                "momentum_40",
+                "momentum_80",
+                "roc_5",
+                "roc_10",
+                "roc_20",
+                "roc_40",
+                "roc_80",
+                "rsi_5",
+                "rsi_10",
+                "rsi_14",
+                "rsi_20",
+                "rsi_40",
+                "stochastic_k_5",
+                "stochastic_d_5",
+                "stochastic_sd_5",
+                "stochastic_k_9",
+                "stochastic_d_9",
+                "stochastic_sd_9",
+                "stochastic_k_20",
+                "stochastic_d_20",
+                "stochastic_sd_20",
+                "stochastic_k_25",
+                "stochastic_d_25",
+                "stochastic_sd_25",
+                "stochastic_k_40",
+                "stochastic_d_40",
+                "stochastic_sd_40"
+            ]
 
-            df = df.dropna()
+            data_len = 20
+            for column in columns:
+                for i in range(data_len):
+                    df[f"{column}_{i}"] = df_preprocess[column].shift(i)
+
+            df["predict_target"] = df_simulate["profit_rate"].shift(-1)
 
             # Save data
             app_s3.write_dataframe(df, self._s3_bucket, f"{self._output_base_path}/stock_prices.{ticker_symbol}.csv")

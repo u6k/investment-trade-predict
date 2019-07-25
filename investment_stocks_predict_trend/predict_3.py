@@ -17,6 +17,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     pred = PredictClassification_3(
+        job_name="predict_3",
         train_start_date="2008-01-01",
         train_end_date="2017-12-31",
         test_start_date="2018-01-01",
