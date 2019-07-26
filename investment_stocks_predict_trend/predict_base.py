@@ -27,7 +27,7 @@ class PredictClassificationBase():
         df_report = app_s3.read_dataframe(self._s3_bucket, f"{self._input_simulate_base_path}/report.csv", index_col=0)
         df_result = pd.DataFrame(columns=df_companies.columns)
 
-        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.preprocess_impl)(ticker_symbol) for ticker_symbol in df_report.sort_values("expected_value_win_only", ascending=False).head(100).index])
+        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.preprocess_impl)(ticker_symbol) for ticker_symbol in df_report.index])
 
         for result in results:
             if result["exception"] is not None:
