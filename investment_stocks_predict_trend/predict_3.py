@@ -1,12 +1,34 @@
 import argparse
 
 from sklearn import ensemble
+# from sklearn import ensemble, model_selection
 from predict_base import PredictClassificationBase
 
 
 class PredictClassification_3(PredictClassificationBase):
     def model_fit(self, x_train, y_train):
-        return ensemble.RandomForestClassifier(n_estimators=200).fit(x_train, y_train)
+        return ensemble.RandomForestClassifier(n_estimators=500, criterion="entropy", max_depth=8).fit(x_train, y_train)
+        # parameters = {
+        #    "n_estimators": [100, 200, 500, 750, 1000],
+        #    "criterion": ["gini", "entropy"],
+        #    "max_depth": [8, 16, 64],
+        # }
+
+        # clf = model_selection.GridSearchCV(
+        #    ensemble.RandomForestClassifier(),
+        #    parameters,
+        #    cv=5,
+        #    n_jobs=-1,
+        #    verbose=1
+        # )
+
+        # clf.fit(x_train, y_train)
+
+        # print(f"best_params: {clf.best_params_}")
+
+        # clf_best = clf.best_estimator_
+
+        # return clf_best
 
 
 if __name__ == "__main__":
