@@ -17,14 +17,22 @@ class SimulateTrade3(SimulateTradeBase):
             "exception": None
         }
 
+        minimum_profit_rate = 0.03
+
         try:
+            # Load data
             df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
+            # Simulate
             df["buy_price"] = df["open_price"]
             df["sell_price"] = df["close_price"]
             df["profit"] = df["sell_price"] - df["buy_price"]
             df["profit_rate"] = df["profit"] / df["sell_price"]
 
+            # Labeling for predict
+            df["predict_target"] = df["profit_rate"].shift(-1).apply(lambda r: 1 if r >= minimum_profit_rate else 0)
+
+            # Save data
             app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
         except Exception as err:
             L.exception(f"ticker_symbol={ticker_symbol}, {err}")
@@ -55,6 +63,8 @@ class SimulateTrade3(SimulateTradeBase):
 
             # Test
             df["action"] = None
+            df["profit"] = None
+            df["profit_rate"] = None
 
             for id in target_period_ids:
                 # Trade

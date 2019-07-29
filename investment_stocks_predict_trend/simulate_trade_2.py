@@ -19,8 +19,10 @@ class SimulateTrade2(SimulateTradeBase):
 
         losscut_rate = 0.98
         take_profit_rate = 0.95
+        minimum_profit_rate = 0.03
 
         try:
+            # Load data
             df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
             # Simulate
@@ -54,7 +56,7 @@ class SimulateTrade2(SimulateTradeBase):
                     if take_profit_price < (df.at[id, "high_price"] * take_profit_rate):
                         take_profit_price = df.at[id, "high_price"] * take_profit_rate
 
-                # set result
+                # Set result
                 if sell_id is not None:
                     df.at[start_id, "sell_id"] = sell_id
                     df.at[start_id, "buy_price"] = df.at[start_id, "open_price"]
@@ -62,6 +64,10 @@ class SimulateTrade2(SimulateTradeBase):
                     df.at[start_id, "profit"] = df.at[start_id, "sell_price"] - df.at[start_id, "buy_price"]
                     df.at[start_id, "profit_rate"] = df.at[start_id, "profit"] / df.at[start_id, "sell_price"]
 
+            # Labeling for predict
+            df["predict_target"] = df["profit_rate"].shift(-1).apply(lambda r: 1 if r >= minimum_profit_rate else 0)
+
+            # Save data
             app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
         except Exception as err:
             L.exception(f"ticker_symbol={ticker_symbol}, {err}")
@@ -84,11 +90,11 @@ class SimulateTrade2(SimulateTradeBase):
             df = app_s3.read_dataframe(s3_bucket, f"{input_simulate_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
                 .rename(columns={
                     "sell_id": "simulate_sell_id",
-                        "buy_price": "simulate_buy_price",
-                        "sell_price": "simulate_sell_price",
-                        "profit": "simulate_profit",
-                        "profit_rate": "simulate_profit_rate"
-                        })
+                    "buy_price": "simulate_buy_price",
+                    "sell_price": "simulate_sell_price",
+                    "profit": "simulate_profit",
+                    "profit_rate": "simulate_profit_rate"
+                })
             df_preprocess = app_s3.read_dataframe(s3_bucket, f"{input_model_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
             # Predict

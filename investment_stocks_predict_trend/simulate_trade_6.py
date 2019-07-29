@@ -17,16 +17,22 @@ class SimulateTrade6(SimulateTradeBase):
             "exception": None
         }
 
+        sma_len_array = [5, 10]
+        losscut_rate=0.98
+        take_profit_rate=0.95
+
+        minimum_profit_rate = 0.03
+
         try:
+            # Load data
             df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-            # preprocess
-            sma_len_array = [5, 10]
+            # Preprocess
             for sma_len in sma_len_array:
                 df[f"sma_{sma_len}"] = df["adjusted_close_price"].rolling(sma_len).mean()
                 df[f"sma_{sma_len}_1"] = df[f"sma_{sma_len}"].shift(1)
 
-            # simulate
+            # Set signal
             target_id_array = df.query(f"(sma_{sma_len_array[0]}_1 < sma_{sma_len_array[1]}_1) and (sma_{sma_len_array[0]} >= sma_{sma_len_array[1]})").index
             for id in target_id_array:
                 df.at[id, "signal"] = "buy"
@@ -35,24 +41,95 @@ class SimulateTrade6(SimulateTradeBase):
             for id in target_id_array:
                 df.at[id, "signal"] = "sell"
 
+            # Simulate
             buy_id = None
-            for id in df.index[: -1]:
-                if df.at[id, "signal"] == "buy":
-                    buy_id = id
+            losscut_price=None
+            take_profit_price=None
+            take_profit=None
 
-                if buy_id is not None and df.at[id, "signal"] == "sell":
-                    buy_price = df.at[buy_id+1, "open_price"]
-                    sell_price = df.at[id+1, "open_price"]
+            for id in df.index[1:]:
+                # Sell: take profit
+                if take_profit:
+                    buy_price = df.at[buy_id, "open_price"]
+                    sell_price = df.at[id, "open_price"]
                     profit = sell_price - buy_price
                     profit_rate = profit / sell_price
 
+                    df.at[buy_id, "result"]="take profit"
+                    df.at[buy_id, "sell_id"] = id
                     df.at[buy_id, "buy_price"] = buy_price
                     df.at[buy_id, "sell_price"] = sell_price
                     df.at[buy_id, "profit"] = profit
                     df.at[buy_id, "profit_rate"] = profit_rate
 
                     buy_id = None
+                    losscut_price=None
+                    take_profit_price=None
+                    take_profit=None
 
+                # Sell: losscut
+                if buy_id is not None and df.at[id, "low_price"] < losscut_price:
+                    buy_price = df.at[buy_id, "open_price"]
+                    sell_price = df.at[id, "open_price"]
+                    profit = sell_price - buy_price
+                    profit_rate = profit / sell_price
+
+                    df.at[buy_id, "result"] = "losscut"
+                    df.at[buy_id, "sell_id"] = id
+                    df.at[buy_id, "buy_price"] = buy_price
+                    df.at[buy_id, "sell_price"] = sell_price
+                    df.at[buy_id, "profit"] = profit
+                    df.at[buy_id, "profit_rate"] = profit_rate
+
+                    buy_id = None
+                    losscut_price=None
+                    take_profit_price=None
+                    take_profit=None
+
+                # Flag: take profit
+                if buy_id is not None and df.at[id, "high_price"] < take_profit_price:
+                    take_profit=True
+
+                # Buy
+                if buy_id is None and df.at[id-1, "signal"] == "buy":
+                    buy_id = id
+                    losscut_price=df.at[id, "close_price"] * losscut_rate
+                    take_profit_price=df.at[id, "high_price"] * take_profit_rate
+                    take_profit=False
+
+                # Sell
+                if buy_id is not None and df.at[id-1, "signal"] == "sell":
+                    buy_price = df.at[buy_id, "open_price"]
+                    sell_price = df.at[id, "open_price"]
+                    profit = sell_price - buy_price
+                    profit_rate = profit / sell_price
+
+                    df.at[buy_id, "result"] = "sell signal"
+                    df.at[buy_id, "sell_id"] = id
+                    df.at[buy_id, "buy_price"] = buy_price
+                    df.at[buy_id, "sell_price"] = sell_price
+                    df.at[buy_id, "profit"] = profit
+                    df.at[buy_id, "profit_rate"] = profit_rate
+
+                    buy_id = None
+                    losscut_price=None
+                    take_profit_price=None
+                    take_profit=None
+
+                # Update losscut/take profit price
+                if buy_id is not None:
+                    losscut_price_tmp=df.at[id, "close_price"] * losscut_rate
+                    if losscut_price_tmp > losscut_price:
+                        losscut_price = losscut_price_tmp
+
+                    take_profit_price_tmp=df.at[id, "high_price"] * take_profit_rate
+                    if take_profit_price_tmp > take_profit_price:
+                        take_profit_price=take_profit_price_tmp
+
+            # Labeling for predict
+            df["predict_target"] = df["profit_rate"].shift(-1).apply(lambda r: 1 if r >= minimum_profit_rate else 0)
+
+            # Save data
             app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
         except Exception as err:
             L.exception(f"ticker_symbol={ticker_symbol}, {err}")
@@ -60,9 +137,9 @@ class SimulateTrade6(SimulateTradeBase):
 
         return result
 
-    def test_singles_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_preprocess_base_path, input_model_base_path, output_base_path):
-        L = get_app_logger(f"test_singles_impl.{ticker_symbol}")
-        L.info(f"test_singles_6: {ticker_symbol}")
+    def forward_test_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_simulate_base_path, input_model_base_path, output_base_path):
+        L = get_app_logger(f"{self._job_name}.forward_test_impl.{ticker_symbol}")
+        L.info(f"{self._job_name}.forward_test_impl: {ticker_symbol}")
 
         result = {
             "ticker_symbol": ticker_symbol,
@@ -72,24 +149,17 @@ class SimulateTrade6(SimulateTradeBase):
         try:
             # Load data
             clf = app_s3.read_sklearn_model(s3_bucket, f"{input_model_base_path}/model.{ticker_symbol}.joblib")
-            df = app_s3.read_dataframe(s3_bucket, f"{input_preprocess_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+            df = app_s3.read_dataframe(s3_bucket, f"{input_simulate_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
+                    .rename(columns={
+                        "buy_price":"simulate_buy_price",
+                        "sell_price":"simulate_sell_price",
+                        "profit":"simulate_profit",
+                        "profit_rate":"simulate_profit_rate"
+                        })
+            df_preprocess = app_s3.read_dataframe(s3_bucket, f"{input_model_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-            df_prices = df[["date", "open_price", "high_price", "low_price", "close_price", "adjusted_close_price", "volume"]].copy()
-            df_preprocessed = df.drop(["date", "open_price", "high_price", "low_price", "close_price", "adjusted_close_price", "volume", "predict_target"], axis=1)
 
-            # Preprocess
-            sma_len_array = [5, 10]
-            for sma_len in sma_len_array:
-                df_prices[f"sma_{sma_len}"] = df_prices["adjusted_close_price"].rolling(sma_len).mean()
-                df_prices[f"sma_{sma_len}_1"] = df_prices[f"sma_{sma_len}"].shift(1)
 
-            target_id_array = df_prices.query(f"(sma_{sma_len_array[0]}_1 < sma_{sma_len_array[1]}_1) and (sma_{sma_len_array[0]} >= sma_{sma_len_array[1]})").index
-            for id in target_id_array:
-                df_prices.at[id, "signal"] = "buy"
-
-            target_id_array = df_prices.query(f"(sma_{sma_len_array[0]}_1 > sma_{sma_len_array[1]}_1) and (sma_{sma_len_array[0]} <= sma_{sma_len_array[1]})").index
-            for id in target_id_array:
-                df_prices.at[id, "signal"] = "sell"
 
             # Predict
             target_period_ids = df_prices.query(f"'{start_date}' <= date <= '{end_date}'").index
@@ -291,7 +361,7 @@ class SimulateTrade6(SimulateTradeBase):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", help="simulate, test, or test_all")
+    parser.add_argument("--task", help="simulate, forward_test, or forward_test_all")
     parser.add_argument("--suffix", help="folder name suffix (default: test)", default="test")
     args = parser.parse_args()
 
@@ -310,26 +380,27 @@ if __name__ == "__main__":
             s3_bucket="u6k",
             base_path=f"ml-data/stocks/simulate_trade_6.{args.suffix}"
         )
-    elif args.task == "test":
-        simulator.test_singles(
+    elif args.task == "forward_test":
+        simulator.forward_test(
             start_date="2018-01-01",
             end_date="2018-12-31",
             s3_bucket="u6k",
-            input_preprocess_base_path=f"ml-data/stocks/predict_3.simulate_trade_6.{args.suffix}",
+            input_simulate_base_path=f"ml-data/stocks/simulate_trade_6.{args.suffix}",
             input_model_base_path=f"ml-data/stocks/predict_3.simulate_trade_6.{args.suffix}",
-            output_base_path=f"ml-data/stocks/simulate_trade_6_test.{args.suffix}"
+            output_base_path=f"ml-data/stocks/forward_test_6.{args.suffix}"
         )
 
-        simulator.report_singles(
+        simulator.forward_test_report(
+            start_date="2018-01-01",
+            end_date="2018-12-31",
             s3_bucket="u6k",
-            base_path=f"ml-data/stocks/simulate_trade_6_test.{args.suffix}"
         )
-    elif args.task == "test_all":
-        simulator.test_all(
+    elif args.task == "forward_test_all":
+        simulator.forward_test_all(
             start_date=datetime(2018, 1, 1),
             end_date=datetime(2019, 1, 1),
             s3_bucket="u6k",
-            base_path=f"ml-data/stocks/simulate_trade_6_test.{args.suffix}"
+            base_path=f"ml-data/stocks/forward_test_6.{args.suffix}"
         )
     else:
         parser.print_help()
