@@ -4,6 +4,9 @@ import joblib
 import pandas as pd
 import boto3
 from keras.models import model_from_json
+from PIL import Image
+import numpy as np
+import tarfile
 
 
 def get_client():
@@ -84,3 +87,26 @@ def read_keras_model(s3_bucket, s3_key_prefix):
         model.load_weights(buf)
 
     return model
+
+
+def write_images(np_array, s3_bucket, s3_key, file_name_preffix):
+    with io.BytesIO() as tar_buf:
+        tar = tarfile.open(fileobj=tar_buf, mode="w:gz")
+        for i, np_2d_array in enumerate(np_array):
+            with io.BytesIO() as buf:
+                img = Image.fromarray(np.uint8(np_2d_array))
+                img.save(buf, format="PNG")
+
+                tar_info = tarfile.TarInfo(name=f"{file_name_preffix}.{i}.png")
+                tar_info.size = buf.getbuffer().nbytes
+
+                tar.addfile(tar_info, fileobj=io.BytesIO(buf.getvalue()))
+
+        tar.close()
+
+        s3 = get_client()
+        s3.put_object(
+            Bucket=s3_bucket,
+            Key=s3_key,
+            Body=io.BytesIO(tar_buf.getvalue())
+        )
