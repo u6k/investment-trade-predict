@@ -18,8 +18,8 @@ class SimulateTrade6(SimulateTradeBase):
         }
 
         sma_len_array = [5, 10]
-        losscut_rate=0.98
-        take_profit_rate=0.95
+        losscut_rate = 0.98
+        take_profit_rate = 0.95
 
         minimum_profit_rate = 0.03
 
@@ -43,9 +43,9 @@ class SimulateTrade6(SimulateTradeBase):
 
             # Simulate
             buy_id = None
-            losscut_price=None
-            take_profit_price=None
-            take_profit=None
+            losscut_price = None
+            take_profit_price = None
+            take_profit = None
 
             for id in df.index[1:]:
                 # Sell: take profit
@@ -55,7 +55,7 @@ class SimulateTrade6(SimulateTradeBase):
                     profit = sell_price - buy_price
                     profit_rate = profit / sell_price
 
-                    df.at[buy_id, "result"]="take profit"
+                    df.at[buy_id, "result"] = "take profit"
                     df.at[buy_id, "sell_id"] = id
                     df.at[buy_id, "buy_price"] = buy_price
                     df.at[buy_id, "sell_price"] = sell_price
@@ -63,9 +63,9 @@ class SimulateTrade6(SimulateTradeBase):
                     df.at[buy_id, "profit_rate"] = profit_rate
 
                     buy_id = None
-                    losscut_price=None
-                    take_profit_price=None
-                    take_profit=None
+                    losscut_price = None
+                    take_profit_price = None
+                    take_profit = None
 
                 # Sell: losscut
                 if buy_id is not None and df.at[id, "low_price"] < losscut_price:
@@ -82,20 +82,20 @@ class SimulateTrade6(SimulateTradeBase):
                     df.at[buy_id, "profit_rate"] = profit_rate
 
                     buy_id = None
-                    losscut_price=None
-                    take_profit_price=None
-                    take_profit=None
+                    losscut_price = None
+                    take_profit_price = None
+                    take_profit = None
 
                 # Flag: take profit
                 if buy_id is not None and df.at[id, "high_price"] < take_profit_price:
-                    take_profit=True
+                    take_profit = True
 
                 # Buy
                 if buy_id is None and df.at[id-1, "signal"] == "buy":
                     buy_id = id
-                    losscut_price=df.at[id, "close_price"] * losscut_rate
-                    take_profit_price=df.at[id, "high_price"] * take_profit_rate
-                    take_profit=False
+                    losscut_price = df.at[id, "close_price"] * losscut_rate
+                    take_profit_price = df.at[id, "high_price"] * take_profit_rate
+                    take_profit = False
 
                 # Sell
                 if buy_id is not None and df.at[id-1, "signal"] == "sell":
@@ -112,22 +112,23 @@ class SimulateTrade6(SimulateTradeBase):
                     df.at[buy_id, "profit_rate"] = profit_rate
 
                     buy_id = None
-                    losscut_price=None
-                    take_profit_price=None
-                    take_profit=None
+                    losscut_price = None
+                    take_profit_price = None
+                    take_profit = None
 
                 # Update losscut/take profit price
                 if buy_id is not None:
-                    losscut_price_tmp=df.at[id, "close_price"] * losscut_rate
+                    losscut_price_tmp = df.at[id, "close_price"] * losscut_rate
                     if losscut_price_tmp > losscut_price:
                         losscut_price = losscut_price_tmp
 
-                    take_profit_price_tmp=df.at[id, "high_price"] * take_profit_rate
+                    take_profit_price_tmp = df.at[id, "high_price"] * take_profit_rate
                     if take_profit_price_tmp > take_profit_price:
-                        take_profit_price=take_profit_price_tmp
+                        take_profit_price = take_profit_price_tmp
 
             # Labeling for predict
-            df["predict_target"] = df["profit_rate"].shift(-1).apply(lambda r: 1 if r >= minimum_profit_rate else 0)
+            df["predict_target_value"] = df["profit_rate"].shift(-1)
+            df["predict_target_label"] = df["predict_target_value"].apply(lambda r: 1 if r >= minimum_profit_rate else 0)
 
             # Save data
             app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
@@ -150,16 +151,13 @@ class SimulateTrade6(SimulateTradeBase):
             # Load data
             clf = app_s3.read_sklearn_model(s3_bucket, f"{input_model_base_path}/model.{ticker_symbol}.joblib")
             df = app_s3.read_dataframe(s3_bucket, f"{input_simulate_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
-                    .rename(columns={
-                        "buy_price":"simulate_buy_price",
-                        "sell_price":"simulate_sell_price",
-                        "profit":"simulate_profit",
-                        "profit_rate":"simulate_profit_rate"
+                .rename(columns={
+                    "buy_price": "simulate_buy_price",
+                        "sell_price": "simulate_sell_price",
+                        "profit": "simulate_profit",
+                        "profit_rate": "simulate_profit_rate"
                         })
             df_preprocess = app_s3.read_dataframe(s3_bucket, f"{input_model_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
-
-
-
 
             # Predict
             target_period_ids = df_prices.query(f"'{start_date}' <= date <= '{end_date}'").index

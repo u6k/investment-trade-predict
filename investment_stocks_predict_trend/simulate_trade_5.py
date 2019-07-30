@@ -30,7 +30,8 @@ class SimulateTrade5(SimulateTradeBase):
             df["profit_rate"] = df["profit"] / df["sell_price"]
 
             # Labeling for predict
-            df["predict_target"] = df["profit_rate"].shift(-1).apply(lambda r: 1 if r >= minimum_profit_rate else 0)
+            df["predict_target_value"] = df["profit_rate"].shift(-1)
+            df["predict_target_label"] = df["predict_target_value"].apply(lambda r: 1 if r >= minimum_profit_rate else 0)
 
             # Save data
             app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
