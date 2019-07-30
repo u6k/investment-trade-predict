@@ -89,7 +89,7 @@ def read_keras_model(s3_bucket, s3_key_prefix):
     return model
 
 
-def write_images(np_array, s3_bucket, s3_key, file_name_preffix):
+def write_images(np_array, s3_bucket, s3_key, file_name_prefix):
     with io.BytesIO() as tar_buf:
         tar = tarfile.open(fileobj=tar_buf, mode="w:gz")
         for i, np_2d_array in enumerate(np_array):
@@ -97,7 +97,7 @@ def write_images(np_array, s3_bucket, s3_key, file_name_preffix):
                 img = Image.fromarray(np.uint8(np_2d_array))
                 img.save(buf, format="PNG")
 
-                tar_info = tarfile.TarInfo(name=f"{file_name_preffix}.{i}.png")
+                tar_info = tarfile.TarInfo(name=f"{file_name_prefix}.{i}.png")
                 tar_info.size = buf.getbuffer().nbytes
 
                 tar.addfile(tar_info, fileobj=io.BytesIO(buf.getvalue()))
