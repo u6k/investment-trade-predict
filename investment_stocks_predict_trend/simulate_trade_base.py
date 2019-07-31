@@ -1,6 +1,7 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 import joblib
 import pandas as pd
+import numpy as np
 
 from app_logging import get_app_logger
 import app_s3
@@ -132,10 +133,20 @@ class SimulateTradeBase():
             result["risk"] = df["profit_rate"].std()
             result["profit_total"] = df.query("profit>0")["profit"].sum()
             result["loss_total"] = df.query("profit<=0")["profit"].sum()
-            result["profit_factor"] = result["profit_total"] / abs(result["loss_total"]) if result["loss_total"] != 0 else None
+            if result["profit_total"] == 0 and result["loss_total"] == 0:
+                result["profit_factor"] = None
+            elif result["loss_total"] == 0:
+                result["profit_factor"] = np.inf
+            else:
+                result["profit_factor"] = result["profit_total"] / abs(result["loss_total"])
             result["profit_average"] = df.query("profit>0")["profit"].mean()
             result["loss_average"] = df.query("profit<=0")["profit"].mean()
-            result["payoff_ratio"] = result["profit_average"] / abs(result["loss_average"]) if result["loss_average"] != 0 else None
+            if result["profit_average"] == 0 and result["loss_average"] == 0:
+                result["payoff_ratio"] = None
+            elif result["loss_average"] == 0:
+                result["payoff_ratio"] = np.inf
+            else:
+                result["payoff_ratio"] = result["profit_average"] / abs(result["loss_average"])
             result["sharpe_ratio"] = result["expected_value"] / result["risk"] if result["risk"] != 0 else None
         except Exception as err:
             L.exception(f"ticker_symbol={ticker_symbol}, {err}")
@@ -144,5 +155,8 @@ class SimulateTradeBase():
         return result
 
     def date_range(self, start, end):
-        for n in range((end - start).days):
-            yield start + timedelta(n)
+        s = datetime.strptime(start, "%Y-%m-%d")
+        e = datetime.strptime(end, "%Y-%m-%d")
+
+        for n in range((e - s).days):
+            yield s + timedelta(n)
