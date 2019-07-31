@@ -2,11 +2,19 @@ import argparse
 
 from sklearn.svm import SVC
 from predict_base import PredictClassificationBase
+import app_s3
 
 
 class PredictClassification_5(PredictClassificationBase):
     def model_fit(self, x_train, y_train):
         return SVC(gamma="scale").fit(x_train, y_train)
+
+    def model_predict(self, ticker_symbol, df_data):
+        model = app_s3.read_sklearn_model(self._s3_bucket, f"{self._output_base_path}/model.{ticker_symbol}.joblib")
+
+        pred = model.predict(df_data.values)
+
+        return pred
 
 
 if __name__ == "__main__":

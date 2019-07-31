@@ -2,11 +2,19 @@ import argparse
 
 from sklearn.linear_model import Lasso
 from predict_base import PredictRegressionBase
+import app_s3
 
 
 class PredictRegression_4(PredictRegressionBase):
     def model_fit(self, x_train, y_train):
         return Lasso().fit(x_train, y_train)
+
+    def model_predict(self, ticker_symbol, df_data):
+        model = app_s3.read_sklearn_model(self._s3_bucket, f"{self._output_base_path}/model.{ticker_symbol}.joblib")
+
+        pred = model.predict(df_data.values)
+
+        return pred
 
 
 if __name__ == "__main__":

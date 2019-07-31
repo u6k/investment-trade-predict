@@ -3,6 +3,7 @@ import argparse
 from sklearn import ensemble
 # from sklearn import ensemble, model_selection
 from predict_base import PredictClassificationBase
+import app_s3
 
 
 class PredictClassification_3(PredictClassificationBase):
@@ -29,6 +30,13 @@ class PredictClassification_3(PredictClassificationBase):
         # clf_best = clf.best_estimator_
 
         # return clf_best
+
+    def model_predict(self, ticker_symbol, df_data):
+        model = app_s3.read_sklearn_model(self._s3_bucket, f"{self._output_base_path}/model.{ticker_symbol}.joblib")
+
+        pred = model.predict(df_data.values)
+
+        return pred
 
 
 if __name__ == "__main__":

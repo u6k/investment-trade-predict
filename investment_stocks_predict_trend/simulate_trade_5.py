@@ -5,6 +5,7 @@ from datetime import datetime
 from app_logging import get_app_logger
 import app_s3
 from simulate_trade_base import SimulateTradeBase
+from predict_3 import PredictClassification_3
 
 
 class SimulateTrade5(SimulateTradeBase):
@@ -41,7 +42,7 @@ class SimulateTrade5(SimulateTradeBase):
 
         return result
 
-    def forward_test_impl(self, ticker_symbol, s3_bucket, input_preprocess_base_path, input_simulate_base_path, input_model_base_path, output_base_path):
+    def forward_test_impl(self, ticker_symbol, predictor, s3_bucket, input_preprocess_base_path, input_simulate_base_path, output_base_path):
         L = get_app_logger(f"{self._job_name}.forward_test_impl.{ticker_symbol}")
         L.info(f"{self._job_name}.forward_test_impl: {ticker_symbol}")
 
@@ -54,11 +55,10 @@ class SimulateTrade5(SimulateTradeBase):
             # Load data
             df_preprocess = app_s3.read_dataframe(s3_bucket, f"{input_preprocess_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
             df = app_s3.read_dataframe(s3_bucket, f"{input_simulate_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
-            clf = app_s3.read_sklearn_model(s3_bucket, f"{input_model_base_path}/model.{ticker_symbol}.joblib")
 
             # Predict
             df_data = df_preprocess.drop("date", axis=1).dropna()
-            predict = clf.predict(df_data.values)
+            predict = predictor.model_predict(ticker_symbol, df_data)
 
             for i, id in enumerate(df_data.index):
                 df.at[id, "predict"] = predict[i]
@@ -216,11 +216,23 @@ if __name__ == "__main__":
             base_path=f"ml-data/stocks/simulate_trade_5.{args.suffix}"
         )
     elif args.task == "forward_test":
+        predictor = PredictClassification_3(
+            job_name="predict_3",
+            train_start_date=None,
+            train_end_date=None,
+            test_start_date=None,
+            test_end_date=None,
+            s3_bucket="u6k",
+            input_preprocess_base_path=None,
+            input_simulate_base_path=None,
+            output_base_path=f"ml-data/stocks/predict_3.simulate_trade_5.{args.suffix}"
+        )
+
         simulator.forward_test(
             s3_bucket="u6k",
+            predictor=predictor,
             input_preprocess_base_path=f"ml-data/stocks/preprocess_3.{args.suffix}",
             input_simulate_base_path=f"ml-data/stocks/simulate_trade_5.{args.suffix}",
-            input_model_base_path=f"ml-data/stocks/predict_3.simulate_trade_5.{args.suffix}",
             output_base_path=f"ml-data/stocks/forward_test_5.{args.suffix}"
         )
 

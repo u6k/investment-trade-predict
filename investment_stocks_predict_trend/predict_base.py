@@ -140,6 +140,9 @@ class PredictClassificationBase():
 
         return scores
 
+    def model_predict(self, ticker_symbol, df_data):
+        raise Exception("Not implemented.")
+
 
 class PredictRegressionBase(PredictClassificationBase):
     def preprocess(self, ticker_symbol):

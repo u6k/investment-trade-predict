@@ -56,15 +56,14 @@ class SimulateTradeBase():
         app_s3.write_dataframe(df_result, s3_bucket, f"{base_path}/report.{start_date}_{end_date}.csv")
         L.info("finish")
 
-    def forward_test(self, s3_bucket, input_preprocess_base_path, input_simulate_base_path, input_model_base_path, output_base_path):
+    def forward_test(self, predictor, s3_bucket, input_preprocess_base_path, input_simulate_base_path, output_base_path):
         L = get_app_logger(f"{self._job_name}.forward_test")
         L.info(f"{self._job_name}.forward_test: start")
 
         df_companies = app_s3.read_dataframe(s3_bucket, f"{input_simulate_base_path}/companies.csv", index_col=0)
-        df_report = app_s3.read_dataframe("u6k", f"{input_model_base_path}/report.csv", index_col=0)
         df_result = pd.DataFrame(columns=df_companies.columns)
 
-        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.forward_test_impl)(ticker_symbol, s3_bucket, input_preprocess_base_path, input_simulate_base_path, input_model_base_path, output_base_path) for ticker_symbol in df_report.index])
+        results = joblib.Parallel(n_jobs=-1)([joblib.delayed(self.forward_test_impl)(ticker_symbol, predictor, s3_bucket, input_preprocess_base_path, input_simulate_base_path, output_base_path) for ticker_symbol in df_companies.index])
 
         for result in results:
             if result["exception"] is not None:
