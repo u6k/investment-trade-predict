@@ -41,7 +41,7 @@ class SimulateTrade5(SimulateTradeBase):
 
         return result
 
-    def forward_test_impl(self, ticker_symbol, start_date, end_date, s3_bucket, input_simulate_base_path, input_model_base_path, output_base_path):
+    def forward_test_impl(self, ticker_symbol, s3_bucket, input_preprocess_base_path, input_simulate_base_path, input_model_base_path, output_base_path):
         L = get_app_logger(f"{self._job_name}.forward_test_impl.{ticker_symbol}")
         L.info(f"{self._job_name}.forward_test_impl: {ticker_symbol}")
 
@@ -52,40 +52,30 @@ class SimulateTrade5(SimulateTradeBase):
 
         try:
             # Load data
+            df_preprocess = app_s3.read_dataframe(s3_bucket, f"{input_preprocess_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+            df = app_s3.read_dataframe(s3_bucket, f"{input_simulate_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
             clf = app_s3.read_sklearn_model(s3_bucket, f"{input_model_base_path}/model.{ticker_symbol}.joblib")
-            df = app_s3.read_dataframe(s3_bucket, f"{input_simulate_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0) \
-                .rename(columns={
-                    "buy_price": "simulate_buy_price",
-                    "sell_price": "simulate_sell_price",
-                    "profit": "simulate_profit",
-                    "profit_rate": "simulate_profit_rate",
-                })
-            df_preprocess = app_s3.read_dataframe(s3_bucket, f"{input_model_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
             # Predict
-            target_period_ids = df.query(f"'{start_date}' <= date <= '{end_date}'").index
-            df = df.loc[target_period_ids[0]-1: target_period_ids[-1]+1]
-            data = df_preprocess.loc[target_period_ids[0]-1: target_period_ids[-1]+1].drop(["date", "predict_target"], axis=1).values
-            df = df.assign(predict=clf.predict(data))
+            df_data = df_preprocess.drop("date", axis=1).dropna()
+            predict = clf.predict(df_data.values)
+
+            for i, id in enumerate(df_data.index):
+                df.at[id, "predict"] = predict[i]
 
             # Test
             df["action"] = None
-            df["profit"] = None
-            df["profit_rate"] = None
 
-            for id in target_period_ids:
-                # Trade
+            for id in df.index[1:]:
                 if df.at[id-1, "predict"] == 1:
                     df.at[id, "action"] = "trade"
+                else:
+                    df.at[id, "buy_price"] = None
+                    df.at[id, "sell_price"] = None
+                    df.at[id, "profit"] = None
+                    df.at[id, "profit_rate"] = None
 
-            for id in df.query("not action.isnull()").index:
-                df.at[id, "buy_action"] = "buy"
-                df.at[id+1, "sell_action"] = "sell"
-                df.at[id+1, "buy_price"] = df.at[id, "open_price"]
-                df.at[id+1, "sell_price"] = df.at[id+1, "open_price"]
-                df.at[id+1, "profit"] = df.at[id+1, "sell_price"] - df.at[id+1, "buy_price"]
-                df.at[id+1, "profit_rate"] = df.at[id+1, "profit"] / df.at[id+1, "sell_price"]
-
+            # Save data
             app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
         except Exception as err:
             L.exception(f"ticker_symbol={ticker_symbol}, {err}")
@@ -221,15 +211,14 @@ if __name__ == "__main__":
 
         simulator.simulate_report(
             start_date="2018-01-01",
-            end_date="2018-12-31",
+            end_date="2019-01-01",
             s3_bucket="u6k",
             base_path=f"ml-data/stocks/simulate_trade_5.{args.suffix}"
         )
     elif args.task == "forward_test":
         simulator.forward_test(
-            start_date="2018-01-01",
-            end_date="2018-12-31",
             s3_bucket="u6k",
+            input_preprocess_base_path=f"ml-data/stocks/preprocess_3.{args.suffix}",
             input_simulate_base_path=f"ml-data/stocks/simulate_trade_5.{args.suffix}",
             input_model_base_path=f"ml-data/stocks/predict_3.simulate_trade_5.{args.suffix}",
             output_base_path=f"ml-data/stocks/forward_test_5.{args.suffix}"
@@ -237,7 +226,7 @@ if __name__ == "__main__":
 
         simulator.forward_test_report(
             start_date="2018-01-01",
-            end_date="2018-12-31",
+            end_date="2019-01-01",
             s3_bucket="u6k",
             base_path=f"ml-data/stocks/forward_test_5.{args.suffix}"
         )
