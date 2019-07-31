@@ -4,6 +4,10 @@ import joblib
 import pandas as pd
 import boto3
 from keras.models import model_from_json
+from PIL import Image
+import numpy as np
+import tarfile
+import tempfile
 
 
 def get_client():
@@ -84,3 +88,43 @@ def read_keras_model(s3_bucket, s3_key_prefix):
         model.load_weights(buf)
 
     return model
+
+
+def write_images(np_array, s3_bucket, s3_key, file_name_prefix):
+    with io.BytesIO() as tar_buf:
+        tar = tarfile.open(fileobj=tar_buf, mode="w:gz")
+        for i, np_2d_array in enumerate(np_array):
+            with io.BytesIO() as buf:
+                img = Image.fromarray(np.uint8(np_2d_array))
+                img.save(buf, format="PNG")
+
+                tar_info = tarfile.TarInfo(name=f"{file_name_prefix}.{i}.png")
+                tar_info.size = buf.getbuffer().nbytes
+
+                tar.addfile(tar_info, fileobj=io.BytesIO(buf.getvalue()))
+
+        tar.close()
+
+        s3 = get_client()
+        s3.put_object(
+            Bucket=s3_bucket,
+            Key=s3_key,
+            Body=io.BytesIO(tar_buf.getvalue())
+        )
+
+
+def extract_images(df_target_train, df_target_test, s3_bucket, s3_key, file_name_prefix):
+    tmp_dir = tempfile.TemporaryDirectory()
+
+    s3 = get_client()
+    obj = s3.get_object(Bucket=s3_bucket, Key=s3_key)
+    with io.BytesIO(obj["Body"].read()) as buf:
+        tar = tarfile.open(fileobj=buf)
+
+        for index in df_target_train.index:
+            os.makedirs(f"{tmp_dir.name}/data/train/{df_target_train.at[index, 'predict_target']}/", exist_ok=True)
+
+            buf_png = tar.extractfile(f"{file_name_prefix}.{index}.png")
+            open(f"{tmp_dir.name}/data/train/{df_target_train.at[index, 'predict_target']}/{file_name_prefix}.{index}.png", "wb").write(buf_png.read())
+
+    return tmp_dir
