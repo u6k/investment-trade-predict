@@ -12,7 +12,7 @@ def execute(s3_bucket, input_base_path, output_base_path, test_mode):
     L.info("start")
 
     # Load data
-    df_companies = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/companies.csv", index_col=0) \
+    df_companies = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/companies.csv", gzip=False, index_col=0) \
         .sort_values("ticker_symbol") \
         .dropna() \
         .drop_duplicates() \
@@ -50,7 +50,7 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path, test
             raise Exception("skip: test mode")
 
         # Load data
-        df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+        df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", gzip=False, index_col=0)
 
         # Preprocess
         df = df.sort_values("date") \

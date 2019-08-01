@@ -8,6 +8,7 @@ from PIL import Image
 import numpy as np
 import tarfile
 import tempfile
+import gzip as gz
 
 
 def get_client():
@@ -21,23 +22,37 @@ def get_client():
     return s3
 
 
-def read_dataframe(s3_bucket, s3_key, **kwargs):
+def read_dataframe(s3_bucket, s3_key, gzip=True, **kwargs):
     s3 = get_client()
-    obj = s3.get_object(Bucket=s3_bucket, Key=s3_key)
-    df = pd.read_csv(obj["Body"], **kwargs)
+    if gzip:
+        obj = s3.get_object(Bucket=s3_bucket, Key=s3_key+".gz")
+        with io.BytesIO(obj["Body"].read()) as buf:
+            data = gz.decompress(buf.getvalue())
+            with io.BytesIO(data) as buf_data:
+                df = pd.read_csv(buf_data, **kwargs)
+    else:
+        obj = s3.get_object(Bucket=s3_bucket, Key=s3_key)
+        df = pd.read_csv(obj["Body"], **kwargs)
 
     return df
 
 
-def write_dataframe(df, s3_bucket, s3_key):
+def write_dataframe(df, s3_bucket, s3_key, gzip=True):
     with io.StringIO() as buf:
         df.to_csv(buf)
         s3 = get_client()
-        s3.put_object(
-            Bucket=s3_bucket,
-            Key=s3_key,
-            Body=io.BytesIO(buf.getvalue().encode())
-        )
+        if gzip:
+            s3.put_object(
+                Bucket=s3_bucket,
+                Key=s3_key+".gz",
+                Body=io.BytesIO(gz.compress(buf.getvalue().encode()))
+            )
+        else:
+            s3.put_object(
+                Bucket=s3_bucket,
+                Key=s3_key,
+                Body=io.BytesIO(buf.getvalue().encode())
+            )
 
 
 def write_sklearn_model(clf, s3_bucket, s3_key):
