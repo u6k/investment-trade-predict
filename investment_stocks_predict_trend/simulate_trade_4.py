@@ -77,8 +77,9 @@ class SimulateTrade4(SimulateTradeBase):
 
                 # Set result
                 if sell_id is not None:
-                    df.at[buy_id, "sell_id"] = sell_id
+                    df.at[buy_id, "buy_date"] = df.at[buy_id, "date"]
                     df.at[buy_id, "buy_price"] = buy_price
+                    df.at[buy_id, "sell_id"] = df.at[sell_id, "date"]
                     df.at[buy_id, "sell_price"] = sell_price
                     df.at[buy_id, "profit"] = sell_price - buy_price
                     df.at[buy_id, "profit_rate"] = (sell_price - buy_price) / sell_price

@@ -56,8 +56,9 @@ class SimulateTrade6(SimulateTradeBase):
                     profit_rate = profit / sell_price
 
                     df.at[buy_id, "result"] = "take profit"
-                    df.at[buy_id, "sell_id"] = id
+                    df.at[buy_id, "buy_date"] = df.at[buy_id, "date"]
                     df.at[buy_id, "buy_price"] = buy_price
+                    df.at[buy_id, "sell_date"] = df.at[id, "date"]
                     df.at[buy_id, "sell_price"] = sell_price
                     df.at[buy_id, "profit"] = profit
                     df.at[buy_id, "profit_rate"] = profit_rate
@@ -75,8 +76,9 @@ class SimulateTrade6(SimulateTradeBase):
                     profit_rate = profit / sell_price
 
                     df.at[buy_id, "result"] = "losscut"
-                    df.at[buy_id, "sell_id"] = id
+                    df.at[buy_id, "buy_date"] = df.at[buy_id, "date"]
                     df.at[buy_id, "buy_price"] = buy_price
+                    df.at[buy_id, "sell_date"] = df.at[id, "date"]
                     df.at[buy_id, "sell_price"] = sell_price
                     df.at[buy_id, "profit"] = profit
                     df.at[buy_id, "profit_rate"] = profit_rate
@@ -105,8 +107,9 @@ class SimulateTrade6(SimulateTradeBase):
                     profit_rate = profit / sell_price
 
                     df.at[buy_id, "result"] = "sell signal"
-                    df.at[buy_id, "sell_id"] = id
+                    df.at[buy_id, "buy_date"] = df.at[buy_id, "date"]
                     df.at[buy_id, "buy_price"] = buy_price
+                    df.at[buy_id, "sell_date"] = df.at[id, "date"]
                     df.at[buy_id, "sell_price"] = sell_price
                     df.at[buy_id, "profit"] = profit
                     df.at[buy_id, "profit_rate"] = profit_rate

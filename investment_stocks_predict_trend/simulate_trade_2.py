@@ -26,14 +26,16 @@ class SimulateTrade2(SimulateTradeBase):
             df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
             # Simulate
-            for start_id in df.index:
-                losscut_price = df.at[start_id, "open_price"] * losscut_rate
-                take_profit_price = df.at[start_id, "open_price"] * take_profit_rate
+            for buy_id in df.index:
+                buy_price = df.at[buy_id, "open_price"]
+                losscut_price = buy_price * losscut_rate
+                take_profit_price = buy_price * take_profit_rate
+
                 sell_id = None
                 sell_price = None
                 take_profit = False
 
-                for id in df.loc[start_id+1:].index:
+                for id in df.loc[buy_id+1:].index:
                     # Sell: take profit
                     if take_profit:
                         sell_id = id
@@ -58,11 +60,12 @@ class SimulateTrade2(SimulateTradeBase):
 
                 # Set result
                 if sell_id is not None:
-                    df.at[start_id, "sell_id"] = sell_id
-                    df.at[start_id, "buy_price"] = df.at[start_id, "open_price"]
-                    df.at[start_id, "sell_price"] = sell_price
-                    df.at[start_id, "profit"] = df.at[start_id, "sell_price"] - df.at[start_id, "buy_price"]
-                    df.at[start_id, "profit_rate"] = df.at[start_id, "profit"] / df.at[start_id, "sell_price"]
+                    df.at[buy_id, "buy_date"] = df.at[buy_id, "date"]
+                    df.at[buy_id, "buy_price"] = buy_price
+                    df.at[buy_id, "sell_date"] = df.at[sell_id, "date"]
+                    df.at[buy_id, "sell_price"] = sell_price
+                    df.at[buy_id, "profit"] = sell_price - buy_price
+                    df.at[buy_id, "profit_rate"] = df.at[buy_id, "profit"] / sell_price
 
             # Labeling for predict
             df["predict_target_value"] = df["profit_rate"].shift(-1)

@@ -24,7 +24,9 @@ class SimulateTrade3(SimulateTradeBase):
             df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
             # Simulate
+            df["buy_date"] = df["date"]
             df["buy_price"] = df["open_price"]
+            df["sell_date"] = df["date"]
             df["sell_price"] = df["close_price"]
             df["profit"] = df["sell_price"] - df["buy_price"]
             df["profit_rate"] = df["profit"] / df["sell_price"]

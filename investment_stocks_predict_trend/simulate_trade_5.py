@@ -24,7 +24,9 @@ class SimulateTrade5(SimulateTradeBase):
             df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
             # Simulate
+            df["buy_date"] = df["date"]
             df["buy_price"] = df["open_price"]
+            df["sell_date"] = df["date"].shift(-1)
             df["sell_price"] = df["open_price"].shift(-1)
             df["profit"] = df["sell_price"] - df["buy_price"]
             df["profit_rate"] = df["profit"] / df["sell_price"]
@@ -32,6 +34,8 @@ class SimulateTrade5(SimulateTradeBase):
             # Labeling for predict
             df["predict_target_value"] = df["profit_rate"].shift(-1)
             df["predict_target_label"] = df["predict_target_value"].apply(lambda r: 1 if r >= minimum_profit_rate else 0)
+
+            df = df.dropna()
 
             # Save data
             app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
