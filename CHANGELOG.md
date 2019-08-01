@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#7115: この手法を検証する…時系列予測を一次元畳み込みを使って解く](https://redmine.u6k.me/issues/7115)
 - [#7234: ブレーク法のルールを改善する](https://redmine.u6k.me/issues/7234)
 - [#7238: 処理全体の流れを見直す](https://redmine.u6k.me/issues/7238)
+- [#7245: csvも圧縮して保存する](https://redmine.u6k.me/issues/7245)
 
 ## [0.12.0] - 2019-07-20
 
