@@ -17,7 +17,7 @@ class SimulateTrade6(SimulateTradeBase):
             "exception": None
         }
 
-        sma_len_array = [5, 10]
+        ema_len_array = [9, 26]
         losscut_rate = 0.98
         take_profit_rate = 0.95
 
@@ -28,16 +28,16 @@ class SimulateTrade6(SimulateTradeBase):
             df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
             # Preprocess
-            for sma_len in sma_len_array:
-                df[f"sma_{sma_len}"] = df["adjusted_close_price"].rolling(sma_len).mean()
-                df[f"sma_{sma_len}_1"] = df[f"sma_{sma_len}"].shift(1)
+            for ema_len in ema_len_array:
+                df[f"ema_{ema_len}"] = df["adjusted_close_price"].ewm(ema_len).mean()
+                df[f"ema_{ema_len}_1"] = df[f"ema_{ema_len}"].shift(1)
 
             # Set signal
-            target_id_array = df.query(f"(sma_{sma_len_array[0]}_1 < sma_{sma_len_array[1]}_1) and (sma_{sma_len_array[0]} >= sma_{sma_len_array[1]})").index
+            target_id_array = df.query(f"(ema_{ema_len_array[0]}_1 < ema_{ema_len_array[1]}_1) and (ema_{ema_len_array[0]} >= ema_{ema_len_array[1]})").index
             for id in target_id_array:
                 df.at[id, "signal"] = "buy"
 
-            target_id_array = df.query(f"(sma_{sma_len_array[0]}_1 > sma_{sma_len_array[1]}_1) and (sma_{sma_len_array[0]} <= sma_{sma_len_array[1]})").index
+            target_id_array = df.query(f"(ema_{ema_len_array[0]}_1 > ema_{ema_len_array[1]}_1) and (ema_{ema_len_array[0]} <= ema_{ema_len_array[1]})").index
             for id in target_id_array:
                 df.at[id, "signal"] = "sell"
 

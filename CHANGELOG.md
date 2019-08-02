@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#7238: 処理全体の流れを見直す](https://redmine.u6k.me/issues/7238)
 - [#7245: csvも圧縮して保存する](https://redmine.u6k.me/issues/7245)
 - [#7225: 全銘柄バックテストで、単利運用(費用考慮なし)・単利運用(手数料・税金考慮あり)・複利運用の資産推移を算出する](https://redmine.u6k.me/issues/7225)
+- [#7181: 指数平滑移動平均を指標に追加する](https://redmine.u6k.me/issues/7181)
 
 ## [0.12.0] - 2019-07-20
 

@@ -39,16 +39,15 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
     try:
         df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-        # Volume change rate
-        df["volume_change"] = df["volume"] / df["volume"].shift(1)
-
-        # Adjusted close price change rate
-        df["adjusted_close_price_change"] = df["adjusted_close_price"] / df["adjusted_close_price"].shift(1)
-
         # SMA (Simple Moving Average)
         sma_len_array = [5, 10, 20, 40, 80]
         for sma_len in sma_len_array:
             df[f"sma_{sma_len}"] = df["adjusted_close_price"].rolling(sma_len).mean()
+
+        # EMA (Exponential Moving Average)
+        ema_len_array = [5, 9, 15, 26, 40, 80]
+        for ema_len in ema_len_array:
+            df[f"ema_{ema_len}"] = df["adjusted_close_price"].ewm(span=ema_len).mean()
 
         # Momentum
         momentum_len_array = [5, 10, 20, 40, 80]
