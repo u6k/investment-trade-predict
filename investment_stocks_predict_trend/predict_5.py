@@ -26,9 +26,9 @@ if __name__ == "__main__":
     pred = PredictClassification_5(
         job_name="predict_5",
         train_start_date="2008-01-01",
-        train_end_date="2017-12-31",
+        train_end_date="2018-01-01",
         test_start_date="2018-01-01",
-        test_end_date="2018-12-31",
+        test_end_date="2019-01-01",
         s3_bucket="u6k",
         input_preprocess_base_path=f"ml-data/stocks/preprocess_3.{args.suffix}",
         input_simulate_base_path=f"ml-data/stocks/simulate_trade_{args.simulate_group}.{args.suffix}",
