@@ -42,22 +42,22 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
         # SMA (Simple Moving Average)
         sma_len_array = [5, 10, 20, 40, 80]
         for sma_len in sma_len_array:
-            df[f"sma_{sma_len}"] = df["adjusted_close_price"].rolling(sma_len).mean()
+            df[f"index_sma_{sma_len}"] = df["adjusted_close_price"].rolling(sma_len).mean()
 
         # EMA (Exponential Moving Average)
         ema_len_array = [5, 9, 15, 26, 40, 80]
         for ema_len in ema_len_array:
-            df[f"ema_{ema_len}"] = df["adjusted_close_price"].ewm(span=ema_len).mean()
+            df[f"index_ema_{ema_len}"] = df["adjusted_close_price"].ewm(span=ema_len).mean()
 
         # Momentum
         momentum_len_array = [5, 10, 20, 40, 80]
         for momentum_len in momentum_len_array:
-            df[f"momentum_{momentum_len}"] = df["adjusted_close_price"] - df["adjusted_close_price"].shift(momentum_len-1)
+            df[f"index_momentum_{momentum_len}"] = df["adjusted_close_price"] - df["adjusted_close_price"].shift(momentum_len-1)
 
         # ROC (Rate Of Change)
         roc_len_array = [5, 10, 20, 40, 80]
         for roc_len in roc_len_array:
-            df[f"roc_{roc_len}"] = df["adjusted_close_price"].pct_change(roc_len-1)
+            df[f"index_roc_{roc_len}"] = df["adjusted_close_price"].pct_change(roc_len-1)
 
         # RSI
         rsi_len_array = [5, 10, 14, 20, 40]
@@ -71,7 +71,7 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
             down_sma = down.rolling(window=rsi_len, center=False).mean()
             rsi = up_sma / (up_sma - down_sma) * 100.0
 
-            df[f"rsi_{rsi_len}"] = rsi
+            df[f"index_rsi_{rsi_len}"] = rsi
 
         # Stochastic
         stochastic_len_array = [5, 9, 20, 25, 40]
@@ -86,19 +86,28 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
             stochastic_d = stochastic_k.rolling(window=3, center=False).mean()
             stochastic_sd = stochastic_d.rolling(window=3, center=False).mean()
 
-            df[f"stochastic_k_{stochastic_len}"] = stochastic_k
-            df[f"stochastic_d_{stochastic_len}"] = stochastic_d
-            df[f"stochastic_sd_{stochastic_len}"] = stochastic_sd
+            df[f"index_stochastic_k_{stochastic_len}"] = stochastic_k
+            df[f"index_stochastic_d_{stochastic_len}"] = stochastic_d
+            df[f"index_stochastic_sd_{stochastic_len}"] = stochastic_sd
 
         # Bollinger band
         bollinger_band_len = 15
 
         std = df["adjusted_close_price"].ewm(span=bollinger_band_len).std()
-        df["bollinger_band_upper"] = df[f"ema_{bollinger_band_len}"] + std * 2
-        df["bollinger_band_lower"] = df[f"ema_{bollinger_band_len}"] - std * 2
 
-        # Drop columns
-        df = df.drop(["ticker_symbol", "open_price", "high_price", "low_price", "close_price", "volume", "adjusted_close_price"], axis=1)
+        for std_len in [1, 2, 3]:
+            df[f"index_bollinger_band_u{std_len}_sigma"] = df[f"index_ema_{bollinger_band_len}"] + std * std_len
+            df[f"index_bollinger_band_d{std_len}_sigma"] = df[f"index_ema_{bollinger_band_len}"] - std * std_len
+
+        # MACD (Moving Average Convergence Divergence)
+        ema_short_len = 12
+        ema_long_len = 26
+        macd_signal_len = 9
+
+        ema_short = df["adjusted_close_price"].ewm(span=ema_short_len).mean()
+        ema_long = df["adjusted_close_price"].ewm(span=ema_long_len).mean()
+        df["index_macd"] = ema_short - ema_long
+        df["index_macd_signal"] = df["index_macd"].ewm(macd_signal_len).mean()
 
         # Save
         app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
