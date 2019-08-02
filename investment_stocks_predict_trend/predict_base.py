@@ -9,15 +9,15 @@ import app_s3
 
 class PredictClassificationBase():
     def __init__(self, **kwargs):
-        self._job_name = kwargs["job_name"]
-        self._train_start_date = kwargs["train_start_date"]
-        self._train_end_date = kwargs["train_end_date"]
-        self._test_start_date = kwargs["test_start_date"]
-        self._test_end_date = kwargs["test_end_date"]
-        self._s3_bucket = kwargs["s3_bucket"]
-        self._input_preprocess_base_path = kwargs["input_preprocess_base_path"]
-        self._input_simulate_base_path = kwargs["input_simulate_base_path"]
-        self._output_base_path = kwargs["output_base_path"]
+        self._job_name = kwargs["job_name"] if "job_name" in kwargs else None
+        self._train_start_date = kwargs["train_start_date"] if "train_start_date" in kwargs else None
+        self._train_end_date = kwargs["train_end_date"] if "train_end_date" in kwargs else None
+        self._test_start_date = kwargs["test_start_date"] if "test_start_date" in kwargs else None
+        self._test_end_date = kwargs["test_end_date"] if "test_end_date" in kwargs else None
+        self._s3_bucket = kwargs["s3_bucket"] if "s3_bucket" in kwargs else None
+        self._input_preprocess_base_path = kwargs["input_preprocess_base_path"] if "input_preprocess_base_path" in kwargs else None
+        self._input_simulate_base_path = kwargs["input_simulate_base_path"] if "input_simulate_base_path" in kwargs else None
+        self._output_base_path = kwargs["output_base_path"] if "output_base_path" in kwargs else None
 
     def train(self):
         L = get_app_logger()
