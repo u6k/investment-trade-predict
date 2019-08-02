@@ -90,6 +90,13 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
             df[f"stochastic_d_{stochastic_len}"] = stochastic_d
             df[f"stochastic_sd_{stochastic_len}"] = stochastic_sd
 
+        # Bollinger band
+        bollinger_band_len = 15
+
+        std = df["adjusted_close_price"].ewm(span=bollinger_band_len).std()
+        df["bollinger_band_upper"] = df[f"ema_{bollinger_band_len}"] + std * 2
+        df["bollinger_band_lower"] = df[f"ema_{bollinger_band_len}"] - std * 2
+
         # Drop columns
         df = df.drop(["ticker_symbol", "open_price", "high_price", "low_price", "close_price", "volume", "adjusted_close_price"], axis=1)
 
