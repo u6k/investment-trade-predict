@@ -7,7 +7,7 @@ from predict_3 import PredictClassification_3
 # from predict_7 import PredictClassification_7
 
 
-class SimulateTrade6(SimulateTradeBase):
+class SimulateTrade8(SimulateTradeBase):
     def simulate_impl(self, ticker_symbol, s3_bucket, input_base_path, output_base_path):
         L = get_app_logger(f"{self._job_name}.simulate_impl.{ticker_symbol}")
         L.info(f"{self._job_name}.simulate_impl: {ticker_symbol}")
@@ -17,8 +17,7 @@ class SimulateTrade6(SimulateTradeBase):
             "exception": None
         }
 
-        ema_len_array = [9, 26]
-        losscut_rate = 0.98
+        losscut_rate = 0.90
         take_profit_rate = 0.95
 
         minimum_profit_rate = 0.03
@@ -28,18 +27,18 @@ class SimulateTrade6(SimulateTradeBase):
             df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
             for column in df.columns:
-                if column.startswith("index_") and not column.startswith("index_ema_"):
-                    df.drop(column, axis=1)
+                if column.startswith("index_") and not column.startswith("index_macd"):
+                    df = df.drop(column, axis=1)
 
-            df[f"index_ema_{ema_len_array[0]}_1"] = df[f"index_ema_{ema_len_array[0]}"].shift(1)
-            df[f"index_ema_{ema_len_array[1]}_1"] = df[f"index_ema_{ema_len_array[1]}"].shift(1)
+            df["index_macd_1"] = df["index_macd"].shift(1)
+            df["index_macd_signal_1"] = df["index_macd_signal"].shift(1)
 
             # Set signal
-            target_id_array = df.query(f"(index_ema_{ema_len_array[0]}_1 < index_ema_{ema_len_array[1]}_1) and (index_ema_{ema_len_array[0]} >= index_ema_{ema_len_array[1]})").index
+            target_id_array = df.query("(index_macd_signal_1 < index_macd_1) and (index_macd_signal >= index_macd)").index
             for id in target_id_array:
                 df.at[id, "signal"] = "buy"
 
-            target_id_array = df.query(f"(index_ema_{ema_len_array[0]}_1 > index_ema_{ema_len_array[1]}_1) and (index_ema_{ema_len_array[0]} <= index_ema_{ema_len_array[1]})").index
+            target_id_array = df.query("(index_macd_signal_1 > index_macd_1) and (index_macd_signal <= index_macd)").index
             for id in target_id_array:
                 df.at[id, "signal"] = "sell"
 
@@ -150,7 +149,7 @@ if __name__ == "__main__":
     parser.add_argument("--suffix", help="folder name suffix (default: test)", default="test")
     args = parser.parse_args()
 
-    simulator = SimulateTrade6("simulate_trade_6")
+    simulator = SimulateTrade8("simulate_trade_8")
 
     s3_bucket = "u6k"
 
@@ -158,13 +157,13 @@ if __name__ == "__main__":
     predictor = PredictClassification_3(
         job_name=predictor_name,
         s3_bucket=s3_bucket,
-        output_base_path=f"ml-data/stocks/{predictor_name}.simulate_trade_6.{args.suffix}"
+        output_base_path=f"ml-data/stocks/{predictor_name}.simulate_trade_8.{args.suffix}"
     )
 
     simulate_input_base_path = f"ml-data/stocks/preprocess_2.{args.suffix}"
-    simulate_output_base_path = f"ml-data/stocks/simulate_trade_6.{args.suffix}"
+    simulate_output_base_path = f"ml-data/stocks/simulate_trade_8.{args.suffix}"
     test_preprocess_base_path = f"ml-data/stocks/preprocess_3.{args.suffix}"
-    test_output_base_path = f"ml-data/stocks/forward_test_6.{predictor_name}.{args.suffix}"
+    test_output_base_path = f"ml-data/stocks/forward_test_8.{predictor_name}.{args.suffix}"
 
     report_start_date = "2008-01-01"
     report_end_date = "2018-01-01"
