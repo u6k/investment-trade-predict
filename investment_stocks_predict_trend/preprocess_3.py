@@ -1,5 +1,4 @@
 import argparse
-import joblib
 import pandas as pd
 from sklearn.preprocessing import minmax_scale
 
@@ -14,9 +13,9 @@ def execute(s3_bucket, input_base_path, output_base_path):
     df_companies = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/companies.csv", index_col=0)
     df_result = pd.DataFrame(columns=df_companies.columns)
 
-    results = joblib.Parallel(n_jobs=-1)([joblib.delayed(preprocess)(ticker_symbol, s3_bucket, input_base_path, output_base_path) for ticker_symbol in df_companies.index])
+    for ticker_symbol in df_companies.index:
+        result = preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path)
 
-    for result in results:
         if result["exception"] is not None:
             continue
 
@@ -37,26 +36,38 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
         "exception": None
     }
 
-    period = 20
+    period = 120
 
     try:
         # Load data
         df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
         # Shift data
-        columns = df.drop("date", axis=1).columns
+        for column in df.columns:
+            if column != "date" and not column.startswith("index_ema"):
+                df = df.drop(column, axis=1)
 
-        for column in columns:
+        column_len = 0
+        for column in df.columns:
+            if column == "date":
+                continue
+
+            df[f"{column}_change"] = df[column].pct_change()
+            df[f"{column}_minmax"] = minmax_scale(df[f"{column}_change"])
+
             for i in range(period):
-                df[f"{column}_{i}"] = minmax_scale(df[column].shift(i))
-            df = df.drop(column, axis=1)
+                df[f"{column}_{i}"] = df[f"{column}_minmax"].shift(i)
+
+            df = df.drop([column, f"{column}_change", f"{column}_minmax"], axis=1)
+
+            column_len += 1
 
         # Save data
         app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
 
         # Convert array to image
-        df = df.fillna(0.0).drop("date", axis=1)
-        image_data = df.values.reshape(len(df), period, len(columns)) * 255.0
+        df_image = df.fillna(0.0).drop("date", axis=1)
+        image_data = df_image.values.reshape(len(df_image), period, column_len) * 255.0
 
         # Save image
         app_s3.write_images(image_data, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.png.tgz", f"stock_prices.{ticker_symbol}")

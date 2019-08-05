@@ -34,9 +34,9 @@ class PredictClassification_3(PredictClassificationBase):
     def model_predict(self, ticker_symbol, df_data):
         model = app_s3.read_sklearn_model(self._s3_bucket, f"{self._output_base_path}/model.{ticker_symbol}.joblib")
 
-        pred = model.predict(df_data.values)
+        df_data["predict"] = model.predict(df_data.values)
 
-        return pred
+        return df_data
 
 
 if __name__ == "__main__":

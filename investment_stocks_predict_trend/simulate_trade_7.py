@@ -3,8 +3,8 @@ import argparse
 from app_logging import get_app_logger
 import app_s3
 from simulate_trade_base import SimulateTradeBase
-# from predict_3 import PredictClassification_3
-from predict_7 import PredictClassification_7
+from predict_3 import PredictClassification_3
+# from predict_7 import PredictClassification_7
 
 
 class SimulateTrade7(SimulateTradeBase):
@@ -26,20 +26,16 @@ class SimulateTrade7(SimulateTradeBase):
             # Load data
             df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
 
-            # Preprocess
-            bollinger_band_len = 15
-
-            mean = df["adjusted_close_price"].ewm(span=bollinger_band_len).mean()
-            std = df["adjusted_close_price"].ewm(span=bollinger_band_len).std()
-            df["bollinger_band_upper"] = mean + std * 2
-            df["bollinger_band_lower"] = mean - std * 2
+            for column in df.columns:
+                if column.startswith("index_") and not column.startswith("index_bollinger_band_"):
+                    df = df.drop(column, axis=1)
 
             # Set signal
-            target_id_array = df.query("adjusted_close_price < bollinger_band_lower").index
+            target_id_array = df.query("adjusted_close_price < index_bollinger_band_d2_sigma").index
             for id in target_id_array:
                 df.at[id, "signal"] = "buy"
 
-            target_id_array = df.query("adjusted_close_price > bollinger_band_upper").index
+            target_id_array = df.query("adjusted_close_price > index_bollinger_band_u2_sigma").index
             for id in target_id_array:
                 df.at[id, "signal"] = "sell"
 
@@ -154,14 +150,14 @@ if __name__ == "__main__":
 
     s3_bucket = "u6k"
 
-    predictor_name = "predict_7"
-    predictor = PredictClassification_7(
+    predictor_name = "predict_3"
+    predictor = PredictClassification_3(
         job_name=predictor_name,
         s3_bucket=s3_bucket,
         output_base_path=f"ml-data/stocks/{predictor_name}.simulate_trade_7.{args.suffix}"
     )
 
-    simulate_input_base_path = f"ml-data/stocks/preprocess_1.{args.suffix}"
+    simulate_input_base_path = f"ml-data/stocks/preprocess_2.{args.suffix}"
     simulate_output_base_path = f"ml-data/stocks/simulate_trade_7.{args.suffix}"
     test_preprocess_base_path = f"ml-data/stocks/preprocess_3.{args.suffix}"
     test_output_base_path = f"ml-data/stocks/forward_test_7.{predictor_name}.{args.suffix}"

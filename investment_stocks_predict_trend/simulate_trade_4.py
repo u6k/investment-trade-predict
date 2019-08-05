@@ -3,8 +3,8 @@ import argparse
 from app_logging import get_app_logger
 import app_s3
 from simulate_trade_base import SimulateTradeBase
-# from predict_3 import PredictClassification_3
-from predict_7 import PredictClassification_7
+from predict_3 import PredictClassification_3
+# from predict_7 import PredictClassification_7
 
 
 class SimulateTrade4(SimulateTradeBase):
@@ -25,6 +25,10 @@ class SimulateTrade4(SimulateTradeBase):
         try:
             # Load data
             df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", index_col=0)
+
+            for column in df.columns:
+                if column.startswith("index_"):
+                    df = df.drop(column, axis=1)
 
             # Setting buy signal
             past_high_price_columns = []
@@ -107,14 +111,14 @@ if __name__ == "__main__":
 
     s3_bucket = "u6k"
 
-    predictor_name = "predict_7"
-    predictor = PredictClassification_7(
+    predictor_name = "predict_3"
+    predictor = PredictClassification_3(
         job_name=predictor_name,
         s3_bucket=s3_bucket,
         output_base_path=f"ml-data/stocks/{predictor_name}.simulate_trade_4.{args.suffix}"
     )
 
-    simulate_input_base_path = f"ml-data/stocks/preprocess_1.{args.suffix}"
+    simulate_input_base_path = f"ml-data/stocks/preprocess_2.{args.suffix}"
     simulate_output_base_path = f"ml-data/stocks/simulate_trade_4.{args.suffix}"
     test_preprocess_base_path = f"ml-data/stocks/preprocess_3.{args.suffix}"
     test_output_base_path = f"ml-data/stocks/forward_test_4.{predictor_name}.{args.suffix}"
