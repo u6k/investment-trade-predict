@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#7181: 指数平滑移動平均を指標に追加する](https://redmine.u6k.me/issues/7181)
 - [#7174: ボリンジャーバンドを指標に追加する](https://redmine.u6k.me/issues/7174)
 - [#7177: MACDによるシミュレーションを行う](https://redmine.u6k.me/issues/7177)
+- [#7229: 個別銘柄テストで、利益率(通常、必勝)を算出する](https://redmine.u6k.me/issues/7229)
 
 ## [0.12.0] - 2019-07-20
 
