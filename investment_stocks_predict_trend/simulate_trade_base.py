@@ -186,6 +186,8 @@ class SimulateTradeBase():
             else:
                 result["payoff_ratio"] = result["profit_average"] / abs(result["loss_average"])
             result["sharpe_ratio"] = result["expected_value"] / result["risk"] if result["risk"] != 0 else None
+            result["profit_rate"] = (df["sell_price"].sum() - df["buy_price"].sum()) / df["sell_price"].sum()
+            result["profit_rate_win_only"] = (df.query("profit>0")["sell_price"].sum() - df.query("profit>0")["buy_price"].sum()) / df.query("profit>0")["sell_price"].sum()
         except Exception as err:
             L.exception(f"ticker_symbol={ticker_symbol}, {err}")
             result["exception"] = err
