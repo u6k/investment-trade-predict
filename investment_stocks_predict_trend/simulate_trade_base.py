@@ -225,7 +225,7 @@ class SimulateTradeBase():
         for ticker_symbol in df_action["ticker_symbol"].unique():
             expected_value = df_report.at[ticker_symbol, "expected_value"]
 
-            for id in df_action.query(f"ticker_symbol=={ticker_symbol}").index:
+            for id in df_action.query(f"ticker_symbol=='{ticker_symbol}'").index:
                 df_action.at[id, "expected_value"] = expected_value
 
         app_s3.write_dataframe(df_action, s3_bucket, f"{base_path}/test_all.action.csv")
