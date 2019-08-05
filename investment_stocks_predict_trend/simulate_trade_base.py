@@ -54,7 +54,7 @@ class SimulateTradeBase():
                 if k != "ticker_symbol" and k != "exception":
                     df_result.at[ticker_symbol, k] = result[k]
 
-        L.info(df_result[["trade_count", "win_rate", "expected_value", "expected_value_win_only", "risk", "profit_factor"]].describe())
+        L.info(df_result[["trade_count", "win_rate", "expected_value", "expected_value_win_only", "risk", "profit_factor", "profit_rate", "profit_rate_win_only"]].describe())
 
         app_s3.write_dataframe(df_result, s3_bucket, f"{base_path}/report.{start_date}_{end_date}.csv")
         L.info("finish")
@@ -135,7 +135,7 @@ class SimulateTradeBase():
                 if k != "ticker_symbol" and k != "exception":
                     df_result.at[ticker_symbol, k] = result[k]
 
-        L.info(df_result[["trade_count", "win_rate", "expected_value", "expected_value_win_only", "risk", "profit_factor"]].describe())
+        L.info(df_result[["trade_count", "win_rate", "expected_value", "expected_value_win_only", "risk", "profit_factor", "profit_rate", "profit_rate_win_only"]].describe())
 
         app_s3.write_dataframe(df_result, s3_bucket, f"{base_path}/report.{start_date}_{end_date}.csv")
         L.info("finish")
