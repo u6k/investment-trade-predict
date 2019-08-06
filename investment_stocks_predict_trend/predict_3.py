@@ -8,7 +8,7 @@ import app_s3
 
 class PredictClassification_3(PredictClassificationBase):
     def model_fit(self, x_train, y_train):
-        return ensemble.RandomForestClassifier(n_estimators=500, criterion="entropy", max_depth=8).fit(x_train, y_train)
+        return ensemble.RandomForestClassifier(n_estimators=500, criterion="entropy", max_depth=8, class_weight="balanced").fit(x_train, y_train)
         # parameters = {
         #    "n_estimators": [100, 200, 500, 750, 1000],
         #    "criterion": ["gini", "entropy"],
