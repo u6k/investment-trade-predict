@@ -35,9 +35,13 @@ class PredictClassificationBase():
             ticker_symbol = result["ticker_symbol"]
             df_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
 
-            scores = result["scores"]
+            scores = result["scores_train"]
             for k in scores.keys():
-                df_result.at[ticker_symbol, k] = scores[k]
+                df_result.at[ticker_symbol, f"{k}_train"] = scores[k]
+
+            scores = result["scores_test"]
+            for k in scores.keys():
+                df_result.at[ticker_symbol, f"{k}_test"] = scores[k]
 
         app_s3.write_dataframe(df_result, self._s3_bucket, f"{self._output_base_path}/report.csv")
 
@@ -60,7 +64,8 @@ class PredictClassificationBase():
             clf = self.model_fit(x_train, y_train)
             app_s3.write_sklearn_model(clf, self._s3_bucket, f"{self._output_base_path}/model.{ticker_symbol}.joblib")
 
-            result["scores"] = self.model_score(clf, x_test, y_test)
+            result["scores_train"] = self.model_score(clf, x_train, y_train)
+            result["scores_test"] = self.model_score(clf, x_test, y_test)
         except Exception as err:
             L.exception(f"ticker_symbol={ticker_symbol}, {err}")
             result["exception"] = err
