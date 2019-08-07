@@ -2,6 +2,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_squared_error, r2_score
+from imblearn.over_sampling import SMOTE
 
 from app_logging import get_app_logger
 import app_s3
@@ -114,6 +115,9 @@ class PredictClassificationBase():
         x_test = df_data_test.values
         y_train = df_target_train.values.flatten()
         y_test = df_target_test.values.flatten()
+
+        # Over sampling
+        x_train, y_train = SMOTE().fit_sample(x_train, y_train)
 
         return x_train, x_test, y_train, y_test
 
