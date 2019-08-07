@@ -3,8 +3,7 @@ import argparse
 from app_logging import get_app_logger
 import app_s3
 from simulate_trade_base import SimulateTradeBase
-from predict_3 import PredictClassification_3
-# from predict_7 import PredictClassification_7
+from predict_5 import PredictClassification_5
 
 
 class SimulateTrade6(SimulateTradeBase):
@@ -154,8 +153,8 @@ if __name__ == "__main__":
 
     s3_bucket = "u6k"
 
-    predictor_name = "predict_3"
-    predictor = PredictClassification_3(
+    predictor_name = "predict_5"
+    predictor = PredictClassification_5(
         job_name=predictor_name,
         s3_bucket=s3_bucket,
         output_base_path=f"ml-data/stocks/{predictor_name}.simulate_trade_6.{args.suffix}"
