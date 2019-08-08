@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#7229: 個別銘柄テストで、利益率(通常、必勝)を算出する](https://redmine.u6k.me/issues/7229)
 - [#7259: 日経平均などのデータでまずは試す](https://redmine.u6k.me/issues/7259)
 - [#7248: 移動平均交差法とデイトレードを組み合わせてシミュレーションしてみる](https://redmine.u6k.me/issues/7248)
+- [#7220: データを階差系列に変換して学習する](https://redmine.u6k.me/issues/7220)
 
 ## [0.12.0] - 2019-07-20
 
