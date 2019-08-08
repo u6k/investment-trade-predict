@@ -1,6 +1,6 @@
 import argparse
 import pandas as pd
-from sklearn.preprocessing import minmax_scale
+from sklearn.preprocessing import scale
 
 from app_logging import get_app_logger
 import app_s3
@@ -52,13 +52,12 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
             if column == "date":
                 continue
 
-            df[f"{column}_change"] = df[column].pct_change()
-            df[f"{column}_minmax"] = minmax_scale(df[f"{column}_change"])
+            df[f"{column}_diff"] = scale(df[column].diff())
 
             for i in range(period):
-                df[f"{column}_{i}"] = df[f"{column}_minmax"].shift(i)
+                df[f"{column}_{i}"] = df[f"{column}_diff"].shift(i)
 
-            df = df.drop([column, f"{column}_change", f"{column}_minmax"], axis=1)
+            df = df.drop([column, f"{column}_diff"], axis=1)
 
             column_len += 1
 

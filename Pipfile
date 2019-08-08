@@ -20,6 +20,7 @@ tensorflow = "*"
 psycopg2 = "*"
 boto3 = "*"
 pillow = "*"
+imbalanced_learn = "*"
 
 [requires]
 python_version = "3.7"
