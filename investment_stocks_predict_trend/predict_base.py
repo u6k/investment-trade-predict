@@ -118,6 +118,7 @@ class PredictClassificationBase():
 
         # Over sampling
         x_train, y_train = SMOTE().fit_sample(x_train, y_train)
+        x_test, y_test = SMOTE().fit_sample(x_test, y_test)
 
         return x_train, x_test, y_train, y_test
 
