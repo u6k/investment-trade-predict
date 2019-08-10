@@ -49,7 +49,7 @@ class PredictClassificationBase():
         L.info("finish")
 
     def train_impl(self, ticker_symbol):
-        L = get_app_logger(ticker_symbol)
+        L = get_app_logger()
         L.info(f"train: {ticker_symbol}")
 
         result = {

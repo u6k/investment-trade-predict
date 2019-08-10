@@ -8,7 +8,7 @@ import app_s3
 
 
 def execute(s3_bucket, input_base_path, output_base_path, suffix):
-    L = get_app_logger("preprocess_1")
+    L = get_app_logger()
     L.info("start")
 
     # Load data
@@ -37,7 +37,7 @@ def execute(s3_bucket, input_base_path, output_base_path, suffix):
 
 
 def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
-    L = get_app_logger(f"preprocess_1.{ticker_symbol}")
+    L = get_app_logger()
     L.info(f"preprocess_1: ticker_symbol={ticker_symbol}")
 
     result = {
