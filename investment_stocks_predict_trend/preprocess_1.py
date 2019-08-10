@@ -55,7 +55,7 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path, test
         # Preprocess
         df = df.sort_values("date") \
             .dropna() \
-            .drop_duplicates()
+            .drop_duplicates(subset="date")
         df = df.assign(id=np.arange(len(df)))
         df = df.set_index("id")
 
