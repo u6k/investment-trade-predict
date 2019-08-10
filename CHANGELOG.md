@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#7248: 移動平均交差法とデイトレードを組み合わせてシミュレーションしてみる](https://redmine.u6k.me/issues/7248)
 - [#7220: データを階差系列に変換して学習する](https://redmine.u6k.me/issues/7220)
 - [#7266: 重複データを除去できていない](https://redmine.u6k.me/issues/7266)
+- [#7257: ログが多重に出力されることがある](https://redmine.u6k.me/issues/7257)
 
 ## [0.12.0] - 2019-07-20
 
