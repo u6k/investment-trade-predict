@@ -10,5 +10,6 @@ def get_app_logger():
     handler.setFormatter(formatter)
     logger.setLevel(DEBUG)
     logger.addHandler(handler)
+    logger.propagate = False
 
     return logger
