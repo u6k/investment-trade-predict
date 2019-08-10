@@ -56,6 +56,12 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path):
         L.info(f"  before nulls: {df.isnull().sum().sum()}")
         L.info(f"  before duplicates date: {len(df)-len(df['date'].unique())}")
 
+        df["date"] = df["date"].str[:10]
+        scales = df["adjusted_close_price"] / df["close_price"]
+        df["adjusted_open_price"] = df["open_price"] * scales
+        df["adjusted_high_price"] = df["high_price"] * scales
+        df["adjusted_low_price"] = df["low_price"] * scales
+
         df = df.sort_values("date") \
             .dropna() \
             .drop_duplicates(subset="date")
