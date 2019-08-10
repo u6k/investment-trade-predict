@@ -38,7 +38,7 @@ def execute(s3_bucket, input_base_path, output_base_path, test_mode):
 
 def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path, test_mode):
     L = get_app_logger(f"preprocess_1.{ticker_symbol}")
-    L.info(f"preprocess_1: {ticker_symbol}")
+    L.info(f"preprocess_1: ticker_symbol={ticker_symbol}")
 
     result = {
         "ticker_symbol": ticker_symbol,
@@ -53,11 +53,23 @@ def preprocess(ticker_symbol, s3_bucket, input_base_path, output_base_path, test
         df = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/stock_prices.{ticker_symbol}.csv", gzip=False, index_col=0)
 
         # Preprocess
+        L.info(f"  before start date: {df['date'].min()}")
+        L.info(f"  before end date: {df['date'].max()}")
+        L.info(f"  before records: {len(df)}")
+        L.info(f"  before nulls: {df.isnull().sum().sum()}")
+        L.info(f"  before duplicates date: {len(df)-len(df['date'].unique())}")
+
         df = df.sort_values("date") \
             .dropna() \
             .drop_duplicates(subset="date")
         df = df.assign(id=np.arange(len(df)))
         df = df.set_index("id")
+
+        L.info(f"  after start date: {df['date'].min()}")
+        L.info(f"  after end date: {df['date'].max()}")
+        L.info(f"  after records: {len(df)}")
+        L.info(f"  after nulls: {df.isnull().sum().sum()}")
+        L.info(f"  after duplicates date: {len(df)-len(df['date'].unique())}")
 
         # Save data
         app_s3.write_dataframe(df, s3_bucket, f"{output_base_path}/stock_prices.{ticker_symbol}.csv")
