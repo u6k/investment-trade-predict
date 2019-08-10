@@ -14,7 +14,7 @@ from predict_base import PredictClassificationBase
 
 class PredictClassification_6(PredictClassificationBase):
     def preprocess_impl(self, ticker_symbol):
-        L = get_app_logger(f"preprocess.{ticker_symbol}")
+        L = get_app_logger()
         L.info(f"predict preprocess_6: {ticker_symbol}")
 
         result = {
@@ -62,7 +62,7 @@ class PredictClassification_6(PredictClassificationBase):
         return result
 
     def train(self):
-        L = get_app_logger("train_6")
+        L = get_app_logger()
         L.info("start")
 
         df_companies = app_s3.read_dataframe(self._s3_bucket, f"{self._input_preprocess_base_path}/companies.csv", index_col=0)
@@ -86,7 +86,7 @@ class PredictClassification_6(PredictClassificationBase):
         L.info("finish")
 
     def train_impl(self, ticker_symbol):
-        L = get_app_logger(ticker_symbol)
+        L = get_app_logger()
         L.info(f"train_6: {ticker_symbol}")
 
         result = {

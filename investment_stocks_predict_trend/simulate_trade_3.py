@@ -8,7 +8,7 @@ from predict_5 import PredictClassification_5
 
 class SimulateTrade3(SimulateTradeBase):
     def simulate_impl(self, ticker_symbol, s3_bucket, input_base_path, output_base_path):
-        L = get_app_logger(f"{self._job_name}.simulate_impl.{ticker_symbol}")
+        L = get_app_logger()
         L.info(f"{self._job_name}.simulate_impl: {ticker_symbol}")
 
         result = {

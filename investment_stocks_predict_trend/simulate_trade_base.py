@@ -12,7 +12,7 @@ class SimulateTradeBase():
         self._job_name = job_name
 
     def simulate(self, s3_bucket, input_base_path, output_base_path):
-        L = get_app_logger(f"{self._job_name}.simulate")
+        L = get_app_logger()
         L.info(f"{self._job_name}.simulate: start")
 
         df_companies = app_s3.read_dataframe(s3_bucket, f"{input_base_path}/companies.csv", index_col=0)
@@ -35,7 +35,7 @@ class SimulateTradeBase():
         raise Exception("Not implemented.")
 
     def simulate_report(self, start_date, end_date, s3_bucket, base_path):
-        L = get_app_logger(f"{self._job_name}.simulate_report")
+        L = get_app_logger()
         L.info(f"{self._job_name}.simulate_report: start")
 
         df_companies = app_s3.read_dataframe(s3_bucket, f"{base_path}/companies.csv", index_col=0)
@@ -60,7 +60,7 @@ class SimulateTradeBase():
         L.info("finish")
 
     def forward_test(self, predictor, s3_bucket, input_preprocess_base_path, input_simulate_base_path, output_base_path):
-        L = get_app_logger(f"{self._job_name}.forward_test")
+        L = get_app_logger()
         L.info(f"{self._job_name}.forward_test: start")
 
         df_companies = app_s3.read_dataframe(s3_bucket, f"{input_simulate_base_path}/companies.csv", index_col=0)
@@ -79,7 +79,7 @@ class SimulateTradeBase():
         L.info("finish")
 
     def forward_test_impl(self, ticker_symbol, predictor, s3_bucket, input_preprocess_base_path, input_simulate_base_path, output_base_path):
-        L = get_app_logger(f"{self._job_name}.forward_test_impl.{ticker_symbol}")
+        L = get_app_logger()
         L.info(f"{self._job_name}.forward_test_impl: {ticker_symbol}")
 
         result = {
@@ -116,7 +116,7 @@ class SimulateTradeBase():
         return result
 
     def forward_test_report(self, start_date, end_date, s3_bucket, base_path):
-        L = get_app_logger(f"{self._job_name}.forward_test_report")
+        L = get_app_logger()
         L.info(f"{self._job_name}.forward_test_report: start")
 
         df_companies = app_s3.read_dataframe(s3_bucket, f"{base_path}/companies.csv", index_col=0)
@@ -141,7 +141,7 @@ class SimulateTradeBase():
         L.info("finish")
 
     def report_impl(self, ticker_symbol, start_date, end_date, s3_bucket, base_path):
-        L = get_app_logger(f"{self._job_name}.report_impl.{ticker_symbol}")
+        L = get_app_logger()
         L.info(f"{self._job_name}.report_impl: {ticker_symbol}")
 
         result = {
@@ -195,7 +195,7 @@ class SimulateTradeBase():
         return result
 
     def forward_test_all(self, report_start_date, report_end_date, test_start_date, test_end_date, s3_bucket, base_path):
-        L = get_app_logger(f"{self._job_name}.forward_test_all")
+        L = get_app_logger()
         L.info(f"{self._job_name}.forward_test_all: start")
 
         # Load data
