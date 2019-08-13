@@ -26,6 +26,7 @@ class SimulateTradeBase():
 
             ticker_symbol = result["ticker_symbol"]
             df_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
+            df_result.at[ticker_symbol, "cluster"] = str(ticker_symbol)
 
         app_s3.write_dataframe(df_result, s3_bucket, f"{output_base_path}/companies.csv")
 
