@@ -26,6 +26,7 @@ class SimulateTradeBase():
 
             ticker_symbol = result["ticker_symbol"]
             df_result.loc[ticker_symbol] = df_companies.loc[ticker_symbol]
+            df_result.at[ticker_symbol, "cluster"] = str(ticker_symbol)
 
         app_s3.write_dataframe(df_result, s3_bucket, f"{output_base_path}/companies.csv")
 
@@ -67,7 +68,7 @@ class SimulateTradeBase():
         df_result = pd.DataFrame(columns=df_companies.columns)
 
         for ticker_symbol in df_companies.index:
-            result = self.forward_test_impl(ticker_symbol, predictor, s3_bucket, input_preprocess_base_path, input_simulate_base_path, output_base_path)
+            result = self.forward_test_impl(ticker_symbol, df_companies.at[ticker_symbol, "cluster"], predictor, s3_bucket, input_preprocess_base_path, input_simulate_base_path, output_base_path)
 
             if result["exception"] is not None:
                 continue
@@ -78,9 +79,9 @@ class SimulateTradeBase():
         app_s3.write_dataframe(df_result, s3_bucket, f"{output_base_path}/companies.csv")
         L.info("finish")
 
-    def forward_test_impl(self, ticker_symbol, predictor, s3_bucket, input_preprocess_base_path, input_simulate_base_path, output_base_path):
+    def forward_test_impl(self, ticker_symbol, cluster, predictor, s3_bucket, input_preprocess_base_path, input_simulate_base_path, output_base_path):
         L = get_app_logger()
-        L.info(f"{self._job_name}.forward_test_impl: {ticker_symbol}")
+        L.info(f"{self._job_name}.forward_test_impl: ticker_symbol={ticker_symbol}, cluster={cluster}")
 
         result = {
             "ticker_symbol": ticker_symbol,
@@ -94,7 +95,7 @@ class SimulateTradeBase():
 
             # Predict
             df_data = df_preprocess.drop("date", axis=1).dropna()
-            df_data = predictor.model_predict(ticker_symbol, df_data)
+            df_data = predictor.model_predict(cluster, df_data)
 
             df["predict"] = df_data["predict"]
 
