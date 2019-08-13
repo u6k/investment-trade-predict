@@ -54,7 +54,7 @@ def execute(s3_bucket, cluster_start_date, cluster_end_date, prices_start_date, 
     L.info(clf)
 
     df_adj["cluster"] = clf.labels_
-    df_companies["cluster"] = df_adj["cluster"]
+    df_companies["cluster"] = df_adj["cluster"].apply(lambda c: f"cluster_{c}")
     df_companies = df_companies.dropna()
 
     L.info(f"clusters={df_companies['cluster'].value_counts()}")
@@ -142,7 +142,7 @@ def execute(s3_bucket, cluster_start_date, cluster_end_date, prices_start_date, 
         df_cluster_prices["date"] = df_cluster_prices.index
         df_cluster_prices["id"] = range(len(df_cluster_prices))
         df_cluster_prices = df_cluster_prices.set_index("id")
-        df_cluster_prices["ticker_symbol"] = f"cluster_{cluster}"
+        df_cluster_prices["ticker_symbol"] = cluster
 
         scaler = MinMaxScaler(feature_range=(0.1, 1.0))
         scaler.fit(np.concatenate([df_adj_open_pc["PC_0"].values, df_adj_high_pc["PC_0"].values, df_adj_low_pc["PC_0"].values, df_adj_close_pc["PC_0"].values]).reshape(-1, 1))
@@ -159,9 +159,9 @@ def execute(s3_bucket, cluster_start_date, cluster_end_date, prices_start_date, 
 
         L.info(f"cluster={cluster}: prices: {df_cluster_prices}")
 
-        app_s3.write_dataframe(df_cluster_prices, s3_bucket, f"{output_base_path}/stock_prices.cluster_{cluster}.csv")
+        app_s3.write_dataframe(df_cluster_prices, s3_bucket, f"{output_base_path}/stock_prices.{cluster}.csv")
 
-        df_companies_cluster.at[f"cluster_{cluster}", "name"] = f"cluster_{cluster}"
+        df_companies_cluster.at[cluster, "name"] = cluster
 
     app_s3.write_dataframe(df_companies_cluster, s3_bucket, f"{output_base_path}/companies.csv")
 
