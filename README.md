@@ -1,8 +1,8 @@
-# 株価変動トレンド予測 _(investment-stocks-predict-trend)_
+# 投資行動予測 _(investment-trade-predict)_
 
-__TODO:__ バッヂを貼る
+[![Build Status](https://travis-ci.org/u6k/investment-trade-predict.svg?branch=master)](https://travis-ci.org/u6k/investment-trade-predict) [![GitHub release](https://img.shields.io/github/release/u6k/investment-trade-predict)](https://github.com/u6k/investment-trade-predict/releases) [![GitHub](https://img.shields.io/github/license/u6k/investment-trade-predict)](https://github.com/u6k/investment-trade-predict/blob/master/LICENSE) [![Website](https://img.shields.io/website/https/redmine.u6k.me?up_message=redmine)](https://redmine.u6k.me/projects/investment-trade-predict)
 
-> 株価変動のトレンドを予測する
+> 投資行動を予測する
 
 __Table of Contents__
 
@@ -35,7 +35,7 @@ __TODO:__
 
 ## Other
 
-その他の情報は、[Wiki \| investment-stocks-predict-trend \| u6k.Redmine](https://redmine.u6k.me/projects/investment-stocks-predict-trend/wiki/Wiki)を参照してください。
+その他の情報は、[Wiki \| investment-trade-predict \| u6k.Redmine](https://redmine.u6k.me/projects/investment-trade-predict/wiki/Wiki)を参照してください。
 
 ## Disclaimer
 
@@ -57,11 +57,10 @@ __TODO:__ 利用規約書籍を元に免責事項を見直す
 
 ## Contributing
 
-当プロジェクトに興味を持っていただき、ありがとうございます。[新しいチケットを起票](https://redmine.u6k.me/projects/investment-stocks-predict-trend/issues/new)していただけると幸いです。
+当プロジェクトに興味を持っていただき、ありがとうございます。[新しいチケットを起票](https://redmine.u6k.me/projects/investment-trade-predict/issues)していただけると幸いです。
 
 当プロジェクトは、[Contributor Covenant](https://www.contributor-covenant.org/version/1/4/code-of-conduct)に準拠します。
 
 ## License
 
-[MIT License](https://github.com/u6k/investment-stocks-predict-trend/blob/master/LICENSE)
-
+[MIT License](https://github.com/u6k/investment-trade-predict/blob/master/LICENSE)
